@@ -125,12 +125,12 @@ function updateEmbedTrack(trackName, curator, riichi = 0, lastRiichi = 'N/A') {
 	if (lastRiichi) playerEmbed.fields[3].value = lastRiichi;
 }
 
-// Compiles all users' [.ogg] files
+// Compiles all users' [.mp3] files
 function compileAll(variant) {
 	const directories = fs.readdirSync(`./music/${variant}/`).filter(dirent => fs.lstatSync(`./music/${variant}/${dirent}`).isDirectory());
 	const mediaFiles = [];
 	directories.forEach(dir => {
-		const medialist = fs.readdirSync(`./music/${variant}/${dir}/`).filter(file => file.endsWith('.ogg'));
+		const medialist = fs.readdirSync(`./music/${variant}/${dir}/`).filter(file => file.endsWith('.mp3'));
 		medialist.forEach(media => {
 			mediaFiles.push(dir + '/' + media);
 		});
@@ -174,11 +174,11 @@ function changeTrack(parent, type, user = 0) {
 			});
 			break;
 		case 'riichi':
-			var personalPlaylist = fs.readdirSync(`./music/riichi/${user}/`).filter(file => file.endsWith('.ogg'));
+			var personalPlaylist = fs.readdirSync(`./music/riichi/${user}/`).filter(file => file.endsWith('.mp3'));
 			const isPersonal = personalPlaylist.length > 0;
-			if (personalPlaylist.length === 0) personalPlaylist = fs.readdirSync(`./music/riichi/0/`).filter(file => file.endsWith('.ogg'));
+			if (personalPlaylist.length === 0) personalPlaylist = fs.readdirSync(`./music/riichi/0/`).filter(file => file.endsWith('.mp3'));
 			const roll = personalPlaylist[Math.floor(Math.random() * personalPlaylist.length)]
-			player.play(createAudioResource(`./music/riichi/${user}/${roll}`));
+			isPersonal ? player.play(createAudioResource(`./music/riichi/${user}/${roll}`)) : player.play(createAudioResource(`./music/riichi/0/${roll}`));
 			getUserById(user).then(u => {
 				var newRiichi = false;
 				if (!riichiTable.includes(user)) {
