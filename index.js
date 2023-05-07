@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const https = require('https');
 const fhandler = require('./lib/filehandler.js');
-const { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const {
 	NoSubscriberBehavior,
 	StreamType,
@@ -14,7 +14,7 @@ const {
 	joinVoiceChannel,
 	getVoiceConnection,
 } = require('@discordjs/voice');
-const { guildId, token, musicPlayerId } = require('./config.json');
+const { prefix, clientId, commandId, guildId, token, musicPlayerId, uploadId } = require('./config.json');
 
 // Create a new client instance
 const client = new Client({
@@ -74,8 +74,8 @@ const playerEmbed = {
 	color: 0xffffff,
 	title: 'Riichi Player',
 	author: {
-		name: 'Chuck',
-		icon_url: 'https://riichi.wiki/images/thumb/Pin_1.png/48px-Pin_1.png'
+		name: 'IchiBot',
+		icon_url: 'https://mahjongsoul.club/sites/default/files/14_115.png'
 	},
 	description: 'Starting...',
 	thumbnail: {
@@ -88,8 +88,10 @@ const playerEmbed = {
 	},
 };
 
+let busy = false;
+
 async function getUserById(id) {
-	if (id === 0 || id === '0') return 'MahjongSoul';
+	if (id === 0 || id === '0') return 'IchiBot';
 	const member = await client.guilds.cache.get(guildId).members.fetch(id);
 	if (!member || !member.nickname) return 'Unregistered user';
 	return member.nickname;
@@ -136,6 +138,12 @@ function updateEmbedTrack(trackName, curator, riichi = 0, lastRiichi = 'N/A') {
 	playerEmbed.fields[1].value = curator;
 	playerEmbed.fields[2].value = riichi;
 	if (lastRiichi) playerEmbed.fields[3].value = lastRiichi;
+}
+
+
+// Compiles an array of [.ogg] files with categories
+function compile(variant, author) {
+	return fs.readdirSync(`./music/${variant}/${author}/`).filter(file => file.endsWith('.mp3'));
 }
 
 // Compiles all users' [.mp3] files
@@ -199,7 +207,7 @@ function changeTrack(parent, type, user = 0) {
 					newRiichi = true;
 				}
 				playerEmbed.description = 'In Riichi!';
-				updateEmbedTrack(roll.substring(0, roll.length - 4), isPersonal ? u : 'MahjongSoul', riichiTable.length, newRiichi ? u : false);
+				updateEmbedTrack(roll.substring(0, roll.length - 4), isPersonal ? u : 'IchiBot', riichiTable.length + (riichiTable.length >= 4 ? '...?' : ''), newRiichi ? u : false);
 				switch (riichiTable.length) {
 					case 1:
 						playerEmbed.thumbnail.url = "attachment://ichihime-6.png";
@@ -209,9 +217,12 @@ function changeTrack(parent, type, user = 0) {
 						playerEmbed.thumbnail.url = "attachment://ichihime-7.png";
 						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-7.png'] }) : parent.edit({ embeds: [playerEmbed] });
 						break;
-					default:
+					case 3:
 						playerEmbed.thumbnail.url = "attachment://ichihime-8.png";
 						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-8.png'] }) : parent.edit({ embeds: [playerEmbed] });
+					default:
+						playerEmbed.thumbnail.url = "attachment://ichihime-2.png";
+						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-2.png'] }) : parent.edit({ embeds: [playerEmbed] });
 				}
 			});
 
@@ -268,29 +279,34 @@ function initSession(connection, parent, voiceChannel) {
 
 	collector.on('collect', async i => {
 		if (!client.channels.cache.get(voiceChannel).members.get(i.user.id)) {
-			i.reply({ content: "You cannot interact with Chuck because you're not in the same voice channel.", ephemeral: true });
+			i.reply({ content: "You cannot interact with IchiBot because you're not in the same voice channel.", ephemeral: true });
 			return;
 		}
 		i.deferUpdate();
 
 		switch (i.customId) {
 			case 'hanchan':
+				busy = true;
 				console.log("Hanchan called.");
 				changeTrack(parent, 'hanchan', i.user.id);
 				riichiTable = [];
 				break;
 			case 'riichi':
+				busy = true;
 				console.log("Riichi called.");
 				changeTrack(parent, 'riichi', i.user.id);
 				break;
 			case 'standby':
+				busy = false;
 				console.log("On standby.");
 				player.removeAllListeners('idle');
 				player.stop();
+				riichiTable = [];
 				resetEmbed(false);
 				parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-10.png'] });
 				break;
 			case 'dismiss':
+				busy = false;
 				console.log("Dismissed.");
 				player.removeAllListeners('idle');
 				player.stop();
@@ -301,6 +317,9 @@ function initSession(connection, parent, voiceChannel) {
 				hanchanMedia = null;
 				currentPlayback = 0;
 				riichiTable = [];
+				client.user.setPresence({
+					status: 'idle'
+				});
 				break;
 			default:
 				console.log("Invalid input.");
@@ -312,20 +331,111 @@ function initSession(connection, parent, voiceChannel) {
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
 client.once(Events.ClientReady, c => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
-	client.application.commands.set([]);
+	client.user.setStatus('idle');
 });
 
 // Log in to Discord with your client's token
 client.login(token);
 
 client.on('messageCreate', async message => {
-	if (message.mentions.has(client.user)) {
+	if (message.author.bot) return;
+
+	if (message.content.startsWith(prefix) && message.channelId === commandId) {
+		// Trims the message into components delimited by spaces
+		const args = message.content.slice(prefix.length).trim().split(/ +/);
+		const command = args.shift().toLowerCase();
+
+		switch (command) {
+			case 'l':
+			case 'list':
+			case 'playlist':
+				let type = 'hanchan';
+				if (args[0] && args.shift().toLowerCase() === 'r') type = 'riichi';
+
+				let idList = [];
+				for (const m of message.mentions.users.values()) {
+					if (m.id === clientId) idList.push(0);
+					else idList.push(m.id);
+				}
+				if (idList.length <= 0) idList.push(message.author.id);
+				
+				for (const id of idList) {
+					let stringifiedList = ''
+					const list = compile(type, id);
+					for (let i = 0; i < list.length; i++) {
+						stringifiedList = stringifiedList.concat((i + 1).toString().padStart(2, '0'), ' | ', list[i], '\n');
+					}
+					message.channel.send(`\`\`\`${stringifiedList}\`\`\``);
+				}
+				break;
+			case 'd':
+			case 'delete':
+				if (busy) {
+					message.reply("I'm currenty busy playing Riichi! Please wait until I'm idle to delete files.");
+					return;
+				}
+				switch (args.length) {
+					case 0:
+						message.reply('You did not provide any arguments. Refer to #documentation in how to delete music tracks.');
+						return;
+					case 1:
+						message.reply('You did not provide enough arguments. Refer to #documentation in how to delete music tracks.');
+						return;
+					default:
+						let type = null;
+						switch (args.shift().toLowerCase()) {
+							case 'h':
+							case 'hanchan':
+								type = 'hanchan';
+								break;
+							case 'r':
+							case 'riichi':
+								type = 'riichi';
+								break;
+							default:
+								message.reply('You did not provide a valid playlist type. The two accepted types are `h` and `r`.');
+								return;
+						}
+						const list = compile(type, message.author.id);
+						if (list.length <= 0) {
+							message.reply('Your list is already empty - there is nothing to delete here!');
+							return;
+						}
+						const index = Math.floor(parseInt(args.shift()));
+						if (isNaN(index) || index > list.length || index <= 0) {
+							message.reply('You did not provide a valid track number. Use `-l`, `-l r` or `-l h` to view your playlist to identify the correct number.');
+							return;
+						}
+
+						// Deletes the file
+						const deletedFile = list[index - 1];
+						try {
+							fs.unlinkSync(`./music/${type}/${message.author.id}/${list[index - 1]}`);
+							return message.reply(`${deletedFile} successfully removed!`);
+						}
+						catch (err) {
+							console.error(err);
+							return message.reply(`There was an error in removing ${deletedFile}.`);
+						}
+				}
+			case 'r':
+			case 'riichi':
+				// TODO: Play specific track
+				break;
+			default:
+				message.reply('This is an invalid command. Refer to #documentation for details on how to use the bot.');
+		}
+	}
+	else if (message.mentions.has(client.user) && !message.mentions.everyone && message.channelId === commandId) {
 		if (client.voice.adapters.size > 0) return message.reply('I am already participating in a voice channel.');
 
 		const channel = message.member?.voice.channel;
 		if (channel) {
 			try {
 				const connection = await connectToChannel(channel);
+				client.user.setPresence({
+					status: 'dnd'
+				});
 				resetEmbed();
 				const playerChannel = client.channels.cache.get(musicPlayerId);
 				const parent = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow], files: ['./assets/ichihime/ichihime-10.png'] });
@@ -340,7 +450,7 @@ client.on('messageCreate', async message => {
 			await message.reply('Join a voice channel so I know where to go!');
 		}
 	}
-	else if (message.attachments.size > 0) {
+	else if (message.attachments.size > 0 && message.channelId === uploadId) {
 		// Creates directories if they don't exist yet
 		if (!fs.existsSync(`./music/hanchan/${message.author.id}`) || !fs.existsSync(`./music/riichi/${message.author.id}`)){
 			fs.mkdirSync(`./music/hanchan/${message.author.id}`);
@@ -356,6 +466,7 @@ client.on('messageCreate', async message => {
 			const selection = await response.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
 			await response.edit( { content: `Uploading to your ${selection.customId === 'h' ? 'Hanchan' : 'Riichi' } playlist...`, components: [] });
 			message.reply({ content: `Uploads parsed. Results:\n${await fhandler.download(message.author.id, selection.customId, message.attachments)}`, ephemeral: true });
+			if (busy) message.reply({ content: `I'm currently in a match - your newly added track will not be used until my next session!`, ephemeral: true });
 		} catch (e) {
 			await response.edit({ content: 'Selection was not made in 1 minute. Abort download.', components: [] });
 		}
