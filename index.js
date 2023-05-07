@@ -1,7 +1,5 @@
 // Require the necessary discord.js classes
 const fs = require('node:fs');
-const path = require('node:path');
-const https = require('https');
 const fhandler = require('./lib/filehandler.js');
 const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const {
@@ -15,6 +13,7 @@ const {
 	getVoiceConnection,
 } = require('@discordjs/voice');
 const { prefix, clientId, commandId, guildId, token, musicPlayerId, uploadId } = require('./config.json');
+const { imageUrl } = require('./emotes.json');
 
 // Create a new client instance
 const client = new Client({
@@ -75,11 +74,11 @@ const playerEmbed = {
 	title: 'Riichi Player',
 	author: {
 		name: 'IchiBot',
-		icon_url: 'https://mahjongsoul.club/sites/default/files/14_115.png'
+		icon_url: imageUrl[18]
 	},
 	description: 'Starting...',
 	thumbnail: {
-		url: 'attachment://ichihime-10.png',
+		url: imageUrl[10],
 	},
 	fields: [],
 	timestamp: '0',
@@ -99,7 +98,7 @@ async function getUserById(id) {
 }
 
 function resetEmbed(timeFlag = true) {
-	playerEmbed.thumbnail.url = 'attachment://ichihime-10.png';
+	playerEmbed.thumbnail.url = imageUrl[10];
 	playerEmbed.description = 'On standby.'
 	playerEmbed.fields = [
 		{
@@ -126,7 +125,7 @@ function resetEmbed(timeFlag = true) {
 }
 
 function finishEmbed() {
-	playerEmbed.thumbnail.url = 'attachment://ichihime-11.png';
+	playerEmbed.thumbnail.url = imageUrl[11];
 	playerEmbed.description = 'Completed session.'
 	playerEmbed.fields = [];
 	playerEmbed.timestamp = new Date().toISOString();
@@ -172,10 +171,10 @@ function changeTrack(parent, type, user = 0, track) {
 			const info = track ? [ user, custom.substring(0, custom.length - 4) ] : hanchanMedia[currentPlayback].substring(0, hanchanMedia[currentPlayback].length - 4).split('/');
 			getUserById(info[0]).then(user => {
 				updateEmbedTrack(info[1], user);
-				if (playerEmbed.thumbnail.url != "attachment://ichihime-3.png") {
-					playerEmbed.thumbnail.url = "attachment://ichihime-3.png";
+				if (playerEmbed.thumbnail.url != imageUrl[3]) {
+					playerEmbed.thumbnail.url = imageUrl[3];
 					playerEmbed.description = 'Playing Mahjong.';
-					parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-3.png'] });
+					parent.edit({ embeds: [playerEmbed] });
 				}
 				else {
 					parent.edit({ embeds: [playerEmbed] });
@@ -215,20 +214,20 @@ function changeTrack(parent, type, user = 0, track) {
 				updateEmbedTrack(roll.substring(0, roll.length - 4), isPersonal ? u : 'IchiBot', riichiTable.length + (riichiTable.length >= 4 ? '...?' : ''), newRiichi ? u : false);
 				switch (riichiTable.length) {
 					case 1:
-						playerEmbed.thumbnail.url = "attachment://ichihime-6.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-6.png'] }) : parent.edit({ embeds: [playerEmbed] });
+						playerEmbed.thumbnail.url = imageUrl[6];
+						parent.edit({ embeds: [playerEmbed] });
 						break;
 					case 2:
-						playerEmbed.thumbnail.url = "attachment://ichihime-7.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-7.png'] }) : parent.edit({ embeds: [playerEmbed] });
+						playerEmbed.thumbnail.url = imageUrl[7];
+						parent.edit({ embeds: [playerEmbed] });
 						break;
 					case 3:
-						playerEmbed.thumbnail.url = "attachment://ichihime-8.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-8.png'] }) : parent.edit({ embeds: [playerEmbed] });
+						playerEmbed.thumbnail.url = imageUrl[8];
+						parent.edit({ embeds: [playerEmbed] });
 						break;
 					default:
-						playerEmbed.thumbnail.url = "attachment://ichihime-2.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-2.png'] }) : parent.edit({ embeds: [playerEmbed] });
+						playerEmbed.thumbnail.url = imageUrl[2];
+						parent.edit({ embeds: [playerEmbed] });
 				}
 			});
 
@@ -309,7 +308,7 @@ function initSession(connection, parent, voiceChannel) {
 				player.stop();
 				riichiTable = [];
 				resetEmbed(false);
-				parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-10.png'] });
+				parent.edit({ embeds: [playerEmbed] });
 				break;
 			case 'dismiss':
 				busy = false;
@@ -317,7 +316,7 @@ function initSession(connection, parent, voiceChannel) {
 				player.removeAllListeners('idle');
 				player.stop();
 				finishEmbed();
-				parent.edit({ embeds: [playerEmbed], components: [], files: ['./assets/ichihime/ichihime-11.png'] });
+				parent.edit({ embeds: [playerEmbed], components: [] });
 				collector.stop();
 				connection.destroy();
 				hanchanMedia = null;
@@ -467,7 +466,7 @@ client.on('messageCreate', async message => {
 				});
 				resetEmbed();
 				const playerChannel = client.channels.cache.get(musicPlayerId);
-				masterPlayer = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow], files: ['./assets/ichihime/ichihime-10.png'] });
+				masterPlayer = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow] });
 				initSession(connection, masterPlayer, message.member?.voice.channelId);
 				connection.subscribe(player);
 			}
