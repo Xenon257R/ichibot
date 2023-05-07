@@ -89,6 +89,7 @@ const playerEmbed = {
 };
 
 let busy = false;
+let masterPlayer;
 
 async function getUserById(id) {
 	if (id === 0 || id === '0') return 'IchiBot';
@@ -163,11 +164,12 @@ let hanchanMedia = null;
 let currentPlayback = 0;
 let riichiTable = [];
 
-function changeTrack(parent, type, user = 0) {
+function changeTrack(parent, type, user = 0, track) {
 	switch (type) {
 		case 'hanchan':
-			player.play(createAudioResource(`./music/hanchan/${hanchanMedia[currentPlayback]}`));
-			const info = hanchanMedia[currentPlayback].substring(0, hanchanMedia[currentPlayback].length - 4).split('/');
+			let custom = track ? compile('hanchan', user)[track - 1] : null;
+			track ? player.play(createAudioResource(`./music/hanchan/${user}/${custom}`)) : player.play(createAudioResource(`./music/hanchan/${hanchanMedia[currentPlayback]}`));
+			const info = track ? [ user, custom.substring(0, custom.length - 4) ] : hanchanMedia[currentPlayback].substring(0, hanchanMedia[currentPlayback].length - 4).split('/');
 			getUserById(info[0]).then(user => {
 				updateEmbedTrack(info[1], user);
 				if (playerEmbed.thumbnail.url != "attachment://ichihime-3.png") {
@@ -179,8 +181,11 @@ function changeTrack(parent, type, user = 0) {
 					parent.edit({ embeds: [playerEmbed] });
 				}
 			});
-			currentPlayback = (currentPlayback + 1) % hanchanMedia.length;
-			if (currentPlayback === 0) hanchanMedia = shuffle(hanchanMedia);
+
+			if (!track) {
+				currentPlayback = (currentPlayback + 1) % hanchanMedia.length;
+				if (currentPlayback === 0) hanchanMedia = shuffle(hanchanMedia);
+			}
 
 			player.removeAllListeners('idle');
 			player.on('idle', function () {
@@ -198,7 +203,7 @@ function changeTrack(parent, type, user = 0) {
 			var personalPlaylist = fs.readdirSync(`./music/riichi/${user}/`).filter(file => file.endsWith('.mp3'));
 			const isPersonal = personalPlaylist.length > 0;
 			if (personalPlaylist.length === 0) personalPlaylist = fs.readdirSync(`./music/riichi/0/`).filter(file => file.endsWith('.mp3'));
-			const roll = personalPlaylist[Math.floor(Math.random() * personalPlaylist.length)]
+			const roll = track ? personalPlaylist[track - 1] : personalPlaylist[Math.floor(Math.random() * personalPlaylist.length)];
 			isPersonal ? player.play(createAudioResource(`./music/riichi/${user}/${roll}`)) : player.play(createAudioResource(`./music/riichi/0/${roll}`));
 			getUserById(user).then(u => {
 				var newRiichi = false;
@@ -220,6 +225,7 @@ function changeTrack(parent, type, user = 0) {
 					case 3:
 						playerEmbed.thumbnail.url = "attachment://ichihime-8.png";
 						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-8.png'] }) : parent.edit({ embeds: [playerEmbed] });
+						break;
 					default:
 						playerEmbed.thumbnail.url = "attachment://ichihime-2.png";
 						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-2.png'] }) : parent.edit({ embeds: [playerEmbed] });
@@ -363,9 +369,9 @@ client.on('messageCreate', async message => {
 					let stringifiedList = ''
 					const list = compile(type, id);
 					for (let i = 0; i < list.length; i++) {
-						stringifiedList = stringifiedList.concat((i + 1).toString().padStart(2, '0'), ' | ', list[i], '\n');
+						stringifiedList = stringifiedList.concat((i + 1).toString().padStart(2, '0'), ' | ', list[i].substring(0, list[i].length - 4).replace(new RegExp('_', 'g'), ' '), '\n');
 					}
-					message.channel.send(`\`\`\`${stringifiedList}\`\`\``);
+					message.channel.send(`\`\`\`ini\n[${(await getUserById(id)).replace(new RegExp('\\[', 'g'), '(').replace(new RegExp('\\]', 'g'), ')')} - ${type}]\n${stringifiedList}\`\`\``);
 				}
 				break;
 			case 'd':
@@ -418,9 +424,32 @@ client.on('messageCreate', async message => {
 							return message.reply(`There was an error in removing ${deletedFile}.`);
 						}
 				}
-			case 'r':
-			case 'riichi':
-				// TODO: Play specific track
+			case 'f':
+			case 'force':
+				if (client.voice.adapters.size <= 0 || !client.channels.cache.get(message.member?.voice.channelId).members.get(clientId)) {
+					message.reply('I am not currently in the same voice channel as you to force playback.');
+					return;
+				}
+				let listtype = 'hanchan';
+				let identifier = args.shift().toLowerCase()
+				if (!identifier) {
+					message.reply('You did not provide a playlist type. `h` and `r` are accepted.');
+					return;
+				}
+				else if (identifier === 'h') listtype = 'hanchan';
+				else if (identifier === 'r') listtype = 'riichi';
+				else {
+					message.reply('You did not provide a valid playlist type. Only `h` and `r` are accepted.');
+					return;
+				}
+				const list = compile(listtype, message.author.id).length > 0 ? compile(listtype, message.author.id) : compile(listtype, 0);
+
+				const index = Math.floor(parseInt(args.shift()));
+				if (isNaN(index) || index > list.length || index <= 0) {
+					message.reply('You did not provide a valid track number. Use `-l`, `-l r` or `-l h` to view your playlist to identify the correct number.');
+					return;
+				}
+				changeTrack(masterPlayer, listtype, message.author.id, index);
 				break;
 			default:
 				message.reply('This is an invalid command. Refer to #documentation for details on how to use the bot.');
@@ -438,8 +467,8 @@ client.on('messageCreate', async message => {
 				});
 				resetEmbed();
 				const playerChannel = client.channels.cache.get(musicPlayerId);
-				const parent = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow], files: ['./assets/ichihime/ichihime-10.png'] });
-				initSession(connection, parent, message.member?.voice.channelId);
+				masterPlayer = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow], files: ['./assets/ichihime/ichihime-10.png'] });
+				initSession(connection, masterPlayer, message.member?.voice.channelId);
 				connection.subscribe(player);
 			}
 			catch (error) {
