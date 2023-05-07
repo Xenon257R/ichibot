@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const https = require('https');
+const fhandler = require('./lib/filehandler.js');
 const { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const {
 	NoSubscriberBehavior,
@@ -55,6 +56,18 @@ const dismissButton = new ButtonBuilder()
 	.setStyle(ButtonStyle.Danger);
 
 const playbackRow = new ActionRowBuilder().addComponents(hanchanButton, riichiButton, standbyButton, dismissButton);
+
+const hPlaylist = new ButtonBuilder()
+	.setCustomId('h')
+	.setLabel('Hanchan Playlist')
+	.setStyle(ButtonStyle.Primary);
+
+const rPlaylist = new ButtonBuilder()
+	.setCustomId('r')
+	.setLabel('Riichi Playlist')
+	.setStyle(ButtonStyle.Primary);
+
+const uploadRow = new ActionRowBuilder().addComponents(hPlaylist, rPlaylist);
 
 // An embedded player to use for playback
 const playerEmbed = {
@@ -152,7 +165,7 @@ function changeTrack(parent, type, user = 0) {
 				if (playerEmbed.thumbnail.url != "attachment://ichihime-3.png") {
 					playerEmbed.thumbnail.url = "attachment://ichihime-3.png";
 					playerEmbed.description = 'Playing Mahjong.';
-					parent.edit({ embeds: [playerEmbed], files: [ './assets/ichihime/ichihime-3.png' ] });
+					parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-3.png'] });
 				}
 				else {
 					parent.edit({ embeds: [playerEmbed] });
@@ -162,7 +175,7 @@ function changeTrack(parent, type, user = 0) {
 			if (currentPlayback === 0) hanchanMedia = shuffle(hanchanMedia);
 
 			player.removeAllListeners('idle');
-			player.on('idle', function() {
+			player.on('idle', function () {
 				player.play(createAudioResource(`./music/hanchan/${hanchanMedia[currentPlayback]}`));
 				const info = hanchanMedia[currentPlayback].substring(0, hanchanMedia[currentPlayback].length - 4).split('/');
 				getUserById(info[0]).then(user => {
@@ -190,20 +203,20 @@ function changeTrack(parent, type, user = 0) {
 				switch (riichiTable.length) {
 					case 1:
 						playerEmbed.thumbnail.url = "attachment://ichihime-6.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: [ './assets/ichihime/ichihime-6.png' ] }) : parent.edit({ embeds: [playerEmbed] });
+						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-6.png'] }) : parent.edit({ embeds: [playerEmbed] });
 						break;
 					case 2:
 						playerEmbed.thumbnail.url = "attachment://ichihime-7.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: [ './assets/ichihime/ichihime-7.png' ] }) : parent.edit({ embeds: [playerEmbed] });
+						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-7.png'] }) : parent.edit({ embeds: [playerEmbed] });
 						break;
 					default:
 						playerEmbed.thumbnail.url = "attachment://ichihime-8.png";
-						newRiichi ? parent.edit({ embeds: [playerEmbed], files: [ './assets/ichihime/ichihime-8.png' ] }) : parent.edit({ embeds: [playerEmbed] });
+						newRiichi ? parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-8.png'] }) : parent.edit({ embeds: [playerEmbed] });
 				}
 			});
 
 			player.removeAllListeners('idle');
-			player.on('idle', function() {
+			player.on('idle', function () {
 				player.play(createAudioResource(`./music/riichi/${user}/${roll}`));
 			});
 			break;
@@ -231,31 +244,35 @@ async function connectToChannel(channel) {
 
 // CITATION: https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array
 function shuffle(array) {
-	let currentIndex = array.length,  randomIndex;
-  
+	let currentIndex = array.length, randomIndex;
+
 	// While there remain elements to shuffle.
 	while (currentIndex != 0) {
-  
-	  // Pick a remaining element.
-	  randomIndex = Math.floor(Math.random() * currentIndex);
-	  currentIndex--;
-  
-	  // And swap it with the current element.
-	  [array[currentIndex], array[randomIndex]] = [
-		array[randomIndex], array[currentIndex]];
-	}
-  
-	return array;
-  }
+		// Pick a remaining element.
+		randomIndex = Math.floor(Math.random() * currentIndex);
+		currentIndex--;
 
-function initSession(connection, parent, message) {
+		// And swap it with the current element.
+		[array[currentIndex], array[randomIndex]] = [
+			array[randomIndex], array[currentIndex]];
+	}
+
+	return array;
+}
+
+function initSession(connection, parent, voiceChannel) {
 	const playerChannel = client.channels.cache.get(musicPlayerId);
 	const collector = playerChannel.createMessageComponentCollector();
 	hanchanMedia = shuffle(compileAll('hanchan'));
 	currentPlayback = 0;
-	
+
 	collector.on('collect', async i => {
+		if (!client.channels.cache.get(voiceChannel).members.get(i.user.id)) {
+			i.reply({ content: "You cannot interact with Chuck because you're not in the same voice channel.", ephemeral: true });
+			return;
+		}
 		i.deferUpdate();
+
 		switch (i.customId) {
 			case 'hanchan':
 				console.log("Hanchan called.");
@@ -271,14 +288,14 @@ function initSession(connection, parent, message) {
 				player.removeAllListeners('idle');
 				player.stop();
 				resetEmbed(false);
-				parent.edit({ embeds: [playerEmbed], files: [ './assets/ichihime/ichihime-10.png' ] });
+				parent.edit({ embeds: [playerEmbed], files: ['./assets/ichihime/ichihime-10.png'] });
 				break;
 			case 'dismiss':
 				console.log("Dismissed.");
 				player.removeAllListeners('idle');
 				player.stop();
 				finishEmbed();
-				parent.edit({ embeds: [playerEmbed], components: [], files: [ './assets/ichihime/ichihime-11.png' ] });
+				parent.edit({ embeds: [playerEmbed], components: [], files: ['./assets/ichihime/ichihime-11.png'] });
 				collector.stop();
 				connection.destroy();
 				hanchanMedia = null;
@@ -295,13 +312,11 @@ function initSession(connection, parent, message) {
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
 client.once(Events.ClientReady, c => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
-    client.application.commands.set([]);
+	client.application.commands.set([]);
 });
 
 // Log in to Discord with your client's token
 client.login(token);
-
-// SECTION: Function execution commands
 
 client.on('messageCreate', async message => {
 	if (message.mentions.has(client.user)) {
@@ -313,8 +328,8 @@ client.on('messageCreate', async message => {
 				const connection = await connectToChannel(channel);
 				resetEmbed();
 				const playerChannel = client.channels.cache.get(musicPlayerId);
-				const parent = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow], files: [ './assets/ichihime/ichihime-10.png' ] });
-				initSession(connection, parent, message);
+				const parent = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow], files: ['./assets/ichihime/ichihime-10.png'] });
+				initSession(connection, parent, message.member?.voice.channelId);
 				connection.subscribe(player);
 			}
 			catch (error) {
@@ -323,6 +338,26 @@ client.on('messageCreate', async message => {
 		}
 		else {
 			await message.reply('Join a voice channel so I know where to go!');
+		}
+	}
+	else if (message.attachments.size > 0) {
+		// Creates directories if they don't exist yet
+		if (!fs.existsSync(`./music/hanchan/${message.author.id}`) || !fs.existsSync(`./music/riichi/${message.author.id}`)){
+			fs.mkdirSync(`./music/hanchan/${message.author.id}`);
+			fs.mkdirSync(`./music/riichi/${message.author.id}`);
+		}
+
+		// Waiting for type response
+		const response = await message.reply({ content: `Which playlist should the above track(s) be assigned to?`, components: [uploadRow] });
+
+		const collectorFilter = i => i.user.id === message.author.id;
+
+		try {
+			const selection = await response.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
+			await response.edit( { content: `Uploading to your ${selection.customId === 'h' ? 'Hanchan' : 'Riichi' } playlist...`, components: [] });
+			message.reply({ content: `Uploads parsed. Results:\n${await fhandler.download(message.author.id, selection.customId, message.attachments)}`, ephemeral: true });
+		} catch (e) {
+			await response.edit({ content: 'Selection was not made in 1 minute. Abort download.', components: [] });
 		}
 	}
 });
