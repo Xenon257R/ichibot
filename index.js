@@ -70,8 +70,8 @@ const uploadRow = new ActionRowBuilder().addComponents(hPlaylist, rPlaylist);
 
 // An embedded player to use for playback
 const playerEmbed = {
-	color: 0xffffff,
-	title: 'Riichi Player',
+	color: 0xffbb9d,
+	title: 'Status:',
 	author: {
 		name: 'IchiBot',
 		icon_url: imageUrl[18]
@@ -125,7 +125,7 @@ function resetEmbed(timeFlag = true) {
 }
 
 function finishEmbed() {
-	playerEmbed.thumbnail.url = imageUrl[11];
+	playerEmbed.thumbnail.url = imageUrl[Math.floor(Math.random()*18)];
 	playerEmbed.description = 'Completed session.'
 	playerEmbed.fields = [];
 	playerEmbed.timestamp = new Date().toISOString();
@@ -233,7 +233,7 @@ function changeTrack(parent, type, user = 0, track) {
 
 			player.removeAllListeners('idle');
 			player.on('idle', function () {
-				player.play(createAudioResource(`./music/riichi/${user}/${roll}`));
+				isPersonal ? player.play(createAudioResource(`./music/riichi/${user}/${roll}`)) : player.play(createAudioResource(`./music/riichi/0/${roll}`));
 			});
 			break;
 		default:
@@ -416,11 +416,11 @@ client.on('messageCreate', async message => {
 						const deletedFile = list[index - 1];
 						try {
 							fs.unlinkSync(`./music/${type}/${message.author.id}/${list[index - 1]}`);
-							return message.reply(`${deletedFile} successfully removed!`);
+							return message.reply(`\`${deletedFile}\` successfully removed!`);
 						}
 						catch (err) {
 							console.error(err);
-							return message.reply(`There was an error in removing ${deletedFile}.`);
+							return message.reply(`There was an error in removing \`${deletedFile}\`.`);
 						}
 				}
 			case 'f':
