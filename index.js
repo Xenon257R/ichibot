@@ -199,7 +199,7 @@ function changeTrack(parent, type, user = 0, track) {
 			});
 			break;
 		case 'riichi':
-			var personalPlaylist = fs.readdirSync(`./music/riichi/${user}/`).filter(file => file.endsWith('.mp3'));
+			var personalPlaylist = fs.existsSync(`./music/riichi/${user}`) ? fs.readdirSync(`./music/riichi/${user}/`).filter(file => file.endsWith('.mp3')) : [];
 			const isPersonal = personalPlaylist.length > 0;
 			if (personalPlaylist.length === 0) personalPlaylist = fs.readdirSync(`./music/riichi/0/`).filter(file => file.endsWith('.mp3'));
 			const roll = track ? personalPlaylist[track - 1] : personalPlaylist[Math.floor(Math.random() * personalPlaylist.length)];
