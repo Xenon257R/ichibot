@@ -22,4 +22,4 @@ You are welcome to adapt the code to your own bot. Accreditation is greatly appr
 
 - *GitHub Issues* are disabled as this bot was made for personal use.
 
-**Disclaimer:** **IchiBot** uses *Ichihime* for its theme who is a character from *MahjongSoul*. Original character copyright remains with the developers of the game: Yostar & Catfood Studio.
+**Disclaimer:** **IchiBot** uses *Ichihime* for its theme who is a character from *MahjongSoul*, as well as its OST as base tracks. Original character and music copyright remains with the developers of the game: Yostar & Catfood Studio.
