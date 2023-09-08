@@ -8,3 +8,6 @@ music/hanchan/*
 
 music/riichi/*
 !music/riichi/0/
+
+*.db
+*.db-journal

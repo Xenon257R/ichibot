@@ -1,6 +1,8 @@
 // Require the necessary discord.js classes
 const fs = require('node:fs');
 const fhandler = require('./lib/filehandler.js');
+const sqlitehandler = require('./lib/sqlitehandler.js');
+
 const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const {
 	NoSubscriberBehavior,
