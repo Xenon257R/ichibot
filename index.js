@@ -359,26 +359,40 @@ client.on('messageCreate', async message => {
 				let type = 'hanchan';
 				if (args[0] && args.shift().toLowerCase() === 'r') type = 'riichi';
 
-				let idList = [];
-				for (const m of message.mentions.users.values()) {
-					if (m.id === clientId) idList.push(0);
-					else idList.push(m.id);
+				let id = message.author.id;
+				if (message.mentions.users.first()) {
+					let m = message.mentions.users.first();
+					if (m.id === clientId) id = 0;
+					else id = m.id;
 				}
-				if (idList.length <= 0) idList.push(message.author.id);
-				
-				for (const id of idList) {
-					let stringifiedList = ''
-					const list = compile(type, id);
-					for (let i = 0; i < list.length; i++) {
-						stringifiedList = stringifiedList.concat((i + 1).toString().padStart(2, '0'), ' | ', list[i].substring(0, list[i].length - 4).replace(new RegExp('_', 'g'), ' '), '\n');
-					}
-					message.channel.send(`\`\`\`ini\n[${(await getUserById(id)).replace(new RegExp('\\[', 'g'), '(').replace(new RegExp('\\]', 'g'), ')')} - ${type}]\n${stringifiedList}\`\`\``);
-				}
+
+				const l = await sqlitehandler.retrieveList(message.guild.id, type == 'hanchan' ? 0 : 1, id);
+				let stringifiedList = '';
+				l.forEach(entry => {
+					stringifiedList = stringifiedList.concat(entry.track_id.toString().padStart(2, '0'), ' | ', entry.name.replace(new RegExp('_', 'g'), ' '), '\n');
+				});
+				message.channel.send(`\`\`\`ini\n[${(await getUserById(message.author.id)).replace(new RegExp('\\[', 'g'), '(').replace(new RegExp('\\]', 'g'), ')')} - ${type}]\n${stringifiedList}\`\`\``);
 				break;
+			case 'a':
+			case 'add':
+				if (busy) {
+					message.reply("I'm currently busy playing Riichi! Please wait until I'm idle to add tracks.");
+					return;
+				}
+				switch (args.length) {
+					case 0:
+						message.reply('You did not provide any arguments. Refer to #documentation in how to add music tracks.');
+						return;
+					default:
+						args.forEach(arg => {
+							sqlitehandler.addTrack(message.author.id, message.guild.id, arg);
+						});
+						return;
+				}
 			case 'd':
 			case 'delete':
 				if (busy) {
-					message.reply("I'm currenty busy playing Riichi! Please wait until I'm idle to delete files.");
+					message.reply("I'm currently busy playing Riichi! Please wait until I'm idle to delete files.");
 					return;
 				}
 				switch (args.length) {
@@ -494,7 +508,7 @@ client.on('messageCreate', async message => {
 
 		try {
 			const selection = await response.awaitMessageComponent({ filter: collectorFilter, time: 60000 });
-			await response.edit( { content: `Uploading to your ${selection.customId === 'h' ? 'Hanchan' : 'Riichi' } playlist...`, components: [] });
+			await response.edit( { content: `Labeling your new track(s) as ${selection.customId === 'h' ? 'Hanchan' : 'Riichi' }...`, components: [] });
 			message.reply({ content: `Uploads parsed. Results:\n${await fhandler.download(message.author.id, selection.customId, message.attachments)}`, ephemeral: true });
 			if (busy) message.reply({ content: `I'm currently in a match - your newly added track will not be used until my next session!`, ephemeral: true });
 		} catch (e) {
