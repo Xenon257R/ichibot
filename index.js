@@ -193,7 +193,7 @@ function changeTrack(server, parent, type, user = 0, track) {
 			player.on('idle', function () {
 				player.play(createAudioResource(`./music/hanchan/${hanchanMedia[currentPlayback]}`));
 				const info = hanchanMedia[currentPlayback].substring(0, hanchanMedia[currentPlayback].length - 4).split('/');
-				getUserById(info[0]).then(user => {
+				getUserById(info[0], server).then(user => {
 					updateEmbedTrack(info[1], user);
 					parent.edit({ embeds: [playerEmbed] });
 				});
@@ -207,7 +207,7 @@ function changeTrack(server, parent, type, user = 0, track) {
 			if (personalPlaylist.length === 0) personalPlaylist = fs.readdirSync(`./music/riichi/0/`).filter(file => file.endsWith('.mp3'));
 			const roll = track ? personalPlaylist[track - 1] : personalPlaylist[Math.floor(Math.random() * personalPlaylist.length)];
 			isPersonal ? player.play(createAudioResource(`./music/riichi/${user}/${roll}`)) : player.play(createAudioResource(`./music/riichi/0/${roll}`));
-			getUserById(user).then(async u => {
+			getUserById(user, server).then(async u => {
 				var newRiichi = false;
 				if (!riichiTable.includes(user)) {
 					riichiTable.push(user);
@@ -428,7 +428,7 @@ client.on('messageCreate', async message => {
 				l.forEach(entry => {
 					stringifiedList = stringifiedList.concat(entry.track_id.toString().padStart(2, '0'), ' | ', entry.name.replace(new RegExp('_', 'g'), ' '), '\n');
 				});
-				message.channel.send(`\`\`\`ini\n[${(await getUserById(message.author.id)).replace(new RegExp('\\[', 'g'), '(').replace(new RegExp('\\]', 'g'), ')')} - ${type}]\n${stringifiedList}\`\`\``);
+				message.channel.send(`\`\`\`ini\n[${(await getUserById(message.author.id, message.guild.id)).replace(new RegExp('\\[', 'g'), '(').replace(new RegExp('\\]', 'g'), ')')} - ${type}]\n${stringifiedList}\`\`\``);
 				break;
 			case 'a':
 			case 'add':
