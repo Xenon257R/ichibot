@@ -92,10 +92,11 @@ const playerEmbed = {
 let busy = false;
 let masterPlayer;
 
-async function getUserById(id) {
+async function getUserById(id, server) {
 	if (id === 0 || id === '0') return 'IchiBot';
-	const member = await client.guilds.cache.get(guildId).members.fetch(id);
-	if (!member || !member.nickname) return 'Unregistered user';
+	const member = client.guilds.cache.get(server).members.cache.get(id);
+	if (!member || (member.user && !member.user.username)) return 'Unregistered user';
+	if (!member.nickname) return member.user.username;
 	return member.nickname;
 }
 
@@ -165,13 +166,13 @@ let hanchanMedia = null;
 let currentPlayback = 0;
 let riichiTable = [];
 
-function changeTrack(parent, type, user = 0, track) {
+function changeTrack(server, parent, type, user = 0, track) {
 	switch (type) {
 		case 'hanchan':
 			let custom = track ? compile('hanchan', user)[track - 1] : null;
 			track ? player.play(createAudioResource(`./music/hanchan/${user}/${custom}`)) : player.play(createAudioResource(`./music/hanchan/${hanchanMedia[currentPlayback]}`));
 			const info = track ? [ user, custom.substring(0, custom.length - 4) ] : hanchanMedia[currentPlayback].substring(0, hanchanMedia[currentPlayback].length - 4).split('/');
-			getUserById(info[0]).then(user => {
+			getUserById(info[0], server).then(user => {
 				updateEmbedTrack(info[1], user);
 				if (playerEmbed.thumbnail.url != imageUrl[3]) {
 					playerEmbed.thumbnail.url = imageUrl[3];
@@ -206,7 +207,7 @@ function changeTrack(parent, type, user = 0, track) {
 			if (personalPlaylist.length === 0) personalPlaylist = fs.readdirSync(`./music/riichi/0/`).filter(file => file.endsWith('.mp3'));
 			const roll = track ? personalPlaylist[track - 1] : personalPlaylist[Math.floor(Math.random() * personalPlaylist.length)];
 			isPersonal ? player.play(createAudioResource(`./music/riichi/${user}/${roll}`)) : player.play(createAudioResource(`./music/riichi/0/${roll}`));
-			getUserById(user).then(u => {
+			getUserById(user).then(async u => {
 				var newRiichi = false;
 				if (!riichiTable.includes(user)) {
 					riichiTable.push(user);
@@ -214,6 +215,12 @@ function changeTrack(parent, type, user = 0, track) {
 				}
 				playerEmbed.description = 'In Riichi!';
 				updateEmbedTrack(roll.substring(0, roll.length - 4), isPersonal ? u : 'IchiBot', riichiTable.length + (riichiTable.length >= 4 ? '...?' : ''), newRiichi ? u : false);
+				const customImage = await sqlitehandler.checkProfile(user);
+				if (customImage) {
+					playerEmbed.thumbnail.url = customImage.custom_image;
+					parent.edit({ embeds: [playerEmbed] });
+					return;
+				}
 				switch (riichiTable.length) {
 					case 1:
 						playerEmbed.thumbnail.url = imageUrl[6];
@@ -278,8 +285,8 @@ function shuffle(array) {
 	return array;
 }
 
-function initSession(connection, parent, voiceChannel) {
-	const playerChannel = client.channels.cache.get(musicPlayerId);
+function initSession(server, connection, parent, voiceChannel, pChannel) {
+	const playerChannel = client.channels.cache.get(pChannel);
 	const collector = playerChannel.createMessageComponentCollector();
 	hanchanMedia = shuffle(compileAll('hanchan'));
 	currentPlayback = 0;
@@ -295,13 +302,13 @@ function initSession(connection, parent, voiceChannel) {
 			case 'hanchan':
 				busy = true;
 				console.log("Hanchan called.");
-				changeTrack(parent, 'hanchan', i.user.id);
+				changeTrack(server, parent, 'hanchan', i.user.id);
 				riichiTable = [];
 				break;
 			case 'riichi':
 				busy = true;
 				console.log("Riichi called.");
-				changeTrack(parent, 'riichi', i.user.id);
+				changeTrack(server, parent, 'riichi', i.user.id);
 				break;
 			case 'standby':
 				busy = false;
@@ -347,12 +354,62 @@ client.login(token);
 client.on('messageCreate', async message => {
 	if (message.author.bot) return;
 
-	if (message.content.startsWith(prefix) && message.channelId === commandId) {
+	const server_info = await sqlitehandler.getServerDetails(message.guild.id);
+
+	if ((message.content.startsWith(prefix)) || (message.mentions.has(client.user) && !message.mentions.everyone)) {
+		if (!await sqlitehandler.serverComplete(message.guild.id)) {
+			const args = message.content.slice(prefix.length).trim().split(/ +/);
+			const command = args.shift().toLowerCase();
+
+			switch (command) {
+				case 'i':
+				case 'init':
+					if (message.mentions.channels.size < 3) {
+						message.reply('You did not provide enough text channels for all necessary parameters!');
+						break;
+					}
+					sqlitehandler.addServer(message.guild.id, message.mentions.channels.at(0).id, message.mentions.channels.at(1).id, message.mentions.channels.at(2).id);
+					message.reply("Successfully updated channels!");
+					break;
+				default:
+					message.reply('I have not been properly set up in this server. Use `-i` or `-init` with text channels so I know where to put and expect things!\n\n' + 
+						'Command: `-i(nit) [#command_channel] [#upload_channel] [#player_channel]`\n\n' +
+						'* `command_channel`: The text channel where I will listen to commands.\n' +
+						'* `upload_channel`: The text channel where I will archive all `.mp3` file uploads.\n' +
+						'* `player_channel`: The text channel where I will display my music player.\n\n' +
+						'Note: You can reuse the same channel multiple times.');
+			}
+			return;
+		}
+	}
+	console.log(`Message channel: ${message.channelId}\nCatalogued channel: ${server_info.command_channel}`);
+	if (message.content.startsWith(prefix)) {
 		// Trims the message into components delimited by spaces
 		const args = message.content.slice(prefix.length).trim().split(/ +/);
 		const command = args.shift().toLowerCase();
 
+		if  (message.channelId != server_info.command_channel && (command != 'i' && command != 'init')) return;
+
 		switch (command) {
+			case 'i':
+			case 'init':
+				if (message.mentions.channels.size < 3) {
+					message.reply('You did not provide enough text channels for all necessary parameters!');
+					break;
+				}
+				sqlitehandler.addServer(message.guild.id, message.mentions.channels.at(0).id, message.mentions.channels.at(1).id, message.mentions.channels.at(2).id);
+				message.reply("Successfully updated channels!");
+				break;
+			case 'p':
+			case 'profile':
+				if (args[0]) {
+					if (args[0] === 'reset') sqlitehandler.dismountProfile(message.guild.id, message.author.id);
+					else sqlitehandler.assignProfile(message.guild.id, message.author.id, args[0]);
+				}
+				else {
+					message.reply("I need an image URL as a parameter! No spaces allowed!");
+				}
+				break;
 			case 'l':
 			case 'list':
 			case 'playlist':
@@ -464,14 +521,15 @@ client.on('messageCreate', async message => {
 					message.reply('You did not provide a valid track number. Use `-l`, `-l r` or `-l h` to view your playlist to identify the correct number.');
 					return;
 				}
-				changeTrack(masterPlayer, listtype, message.author.id, index);
+				changeTrack(message.guild.id, masterPlayer, listtype, message.author.id, index);
 				break;
 			default:
 				message.reply('This is an invalid command. Refer to #documentation for details on how to use the bot.');
 		}
 	}
-	else if (message.mentions.has(client.user) && !message.mentions.everyone && message.channelId === commandId) {
-		if (client.voice.adapters.size > 0) return message.reply('I am already participating in a voice channel.');
+	else if (message.mentions.has(client.user) && !message.mentions.everyone && message.channelId === server_info.command_channel) {
+		console.log(`Heard mention in server ${message.guild.id}!`);
+		// if (client.voice.adapters.size > 0) return message.reply('I am already participating in a voice channel.');
 
 		const channel = message.member?.voice.channel;
 		if (channel) {
@@ -481,9 +539,9 @@ client.on('messageCreate', async message => {
 					status: 'dnd'
 				});
 				resetEmbed();
-				const playerChannel = client.channels.cache.get(musicPlayerId);
+				const playerChannel = client.channels.cache.get(server_info.player_channel);
 				masterPlayer = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow] });
-				initSession(connection, masterPlayer, message.member?.voice.channelId);
+				initSession(message.guild.id, connection, masterPlayer, message.member?.voice.channelId, server_info.player_channel);
 				connection.subscribe(player);
 			}
 			catch (error) {
@@ -494,7 +552,7 @@ client.on('messageCreate', async message => {
 			await message.reply('Join a voice channel so I know where to go!');
 		}
 	}
-	else if (message.attachments.size > 0 && message.channelId === uploadId) {
+	else if (message.attachments.size > 0 && message.channelId === server_info.upload_channel) {
 		// Creates directories if they don't exist yet
 		if (!fs.existsSync(`./music/hanchan/${message.author.id}`) || !fs.existsSync(`./music/riichi/${message.author.id}`)){
 			fs.mkdirSync(`./music/hanchan/${message.author.id}`);
