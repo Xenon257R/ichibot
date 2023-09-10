@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const fhandler = require('./lib/filehandler.js');
 const sqlitehandler = require('./lib/sqlitehandler.js');
+const voicehandler = require('./lib/musicplayer.js');
 
 const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const {
@@ -331,9 +332,6 @@ function initSession(server, connection, parent, voiceChannel, pChannel) {
 				hanchanMedia = null;
 				currentPlayback = 0;
 				riichiTable = [];
-				client.user.setPresence({
-					status: 'idle'
-				});
 				break;
 			default:
 				console.log("Invalid input.");
@@ -345,7 +343,6 @@ function initSession(server, connection, parent, voiceChannel, pChannel) {
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
 client.once(Events.ClientReady, c => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
-	client.user.setStatus('idle');
 });
 
 // Log in to Discord with your client's token
@@ -382,7 +379,6 @@ client.on('messageCreate', async message => {
 			return;
 		}
 	}
-	console.log(`Message channel: ${message.channelId}\nCatalogued channel: ${server_info.command_channel}`);
 	if (message.content.startsWith(prefix)) {
 		// Trims the message into components delimited by spaces
 		const args = message.content.slice(prefix.length).trim().split(/ +/);
@@ -528,21 +524,19 @@ client.on('messageCreate', async message => {
 		}
 	}
 	else if (message.mentions.has(client.user) && !message.mentions.everyone && message.channelId === server_info.command_channel) {
-		console.log(`Heard mention in server ${message.guild.id}!`);
 		// if (client.voice.adapters.size > 0) return message.reply('I am already participating in a voice channel.');
 
 		const channel = message.member?.voice.channel;
 		if (channel) {
 			try {
-				const connection = await connectToChannel(channel);
-				client.user.setPresence({
-					status: 'dnd'
-				});
-				resetEmbed();
-				const playerChannel = client.channels.cache.get(server_info.player_channel);
-				masterPlayer = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow] });
-				initSession(message.guild.id, connection, masterPlayer, message.member?.voice.channelId, server_info.player_channel);
-				connection.subscribe(player);
+				console.log(`${message.guild.id}, ${channel}, ${server_info.player_channel}`);
+				await voicehandler.createVoice(client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));
+				// const connection = await connectToChannel(channel);
+				// resetEmbed();
+				// const playerChannel = client.channels.cache.get(server_info.player_channel);
+				// masterPlayer = await playerChannel.send({ embeds: [playerEmbed], components: [playbackRow] });
+				// initSession(message.guild.id, connection, masterPlayer, message.member?.voice.channelId, server_info.player_channel);
+				// connection.subscribe(player);
 			}
 			catch (error) {
 				console.error(error);
