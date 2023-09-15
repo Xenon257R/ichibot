@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const fhandler = require('./lib/filehandler.js');
 const sqlitehandler = require('./lib/sqlitehandler.js');
 const voicehandler = require('./lib/musicplayer.js');
+const helpdoc = require('./lib/helpdoc.js');
 
 const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { prefix, clientId, token } = require('./config.json');
@@ -52,13 +53,11 @@ client.on('messageCreate', async message => {
 
 		if (server_info.command_channel && message.channel.id != server_info.command_channel) return;
 
-		if (!server_info.command_channel) server_info.command_channel = message.channel.id;
-
 		switch (command) {
 			case 'i':
 			case 'init':
 				message.reply(await sqlitehandler.addServer(message.guild.id));
-				break;
+				return;
 			case 's':
 			case 'set':
 			case 'settings':
@@ -67,12 +66,12 @@ client.on('messageCreate', async message => {
 					case 'command':
 						if (!message.mentions.channels.at(0)) message.reply("You did not provide a channel to restrict commands.");
 						else message.reply(await sqlitehandler.modifyServer(message.guild.id, 'command_channel', message.mentions.channels.at(0).id));
-						break;
+						return;
 					case 'p':
 					case 'player':
 						if (!message.mentions.channels.at(0)) message.reply("You did not provide a text channel to create the embed.");
 						else message.reply(await sqlitehandler.modifyServer(message.guild.id, 'player_channel', message.mentions.channels.at(0).id));
-						break;
+						return;
 					case 'd':
 					case 'default':
 						if (!args[1]) {
@@ -95,12 +94,21 @@ client.on('messageCreate', async message => {
 							default:
 								message.reply("You did not provide a valid parameter for toggling default music settings.");
 						}
-						break;
+						return;
 					default:
 						if (args.length <= 0) message.reply("You did not provide any arguments for changing bot settings.");
 						else message.reply("You did not provide a valid argument for changing bot settings.");
 				}
-				break;
+				return;
+			case 'h':
+			case 'help':
+				message.reply(helpdoc.specificHelp(args[0]));
+				return;
+		}
+
+		if (!server_info.command_channel) server_info.command_channel = message.channel.id;
+
+		switch (command) {
 			case 'p':
 			case 'profile':
 				if (args.length < 1) {
