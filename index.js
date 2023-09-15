@@ -18,13 +18,7 @@ const client = new Client({
 	]
 });
 
-async function getUserById(id, server) {
-	if (id === 0 || id === '0') return 'IchiBot';
-	const member = client.guilds.cache.get(server).members.cache.get(id);
-	if (!member || (member.user && !member.user.username)) return 'Unregistered user';
-	if (!member.nickname) return member.user.username;
-	return member.nickname;
-}
+const setup = 'I have not been properly set up in this server. Use `-i` or `-init` so I am properly intialized!\nNOTE: You can re-run this command again in the future to reset server settings saved by this bot.';
 
 // When the client is ready, run this code (only once)
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
@@ -50,38 +44,62 @@ client.on('messageCreate', async message => {
 			args[i] = args[i].replace(/^"(.+)"$/,'$1');
 		}
 
-		if (!server_info.command_channel || !server_info.player_channel) {
-			switch (command) {
-				case 'i':
-				case 'init':
-					if (message.mentions.channels.size < 2) {
-						message.reply('You did not provide enough text channels for all necessary parameters!');
-						break;
-					}
-					sqlitehandler.addServer(message.guild.id, message.mentions.channels.at(0).id, message.mentions.channels.at(1).id);
-					message.reply("Successfully updated channels!");
-					break;
-				default:
-					message.reply('I have not been properly set up in this server. Use `-i` or `-init` with text channels so I know where to put and expect things!\n\n' + 
-						'Command: `-i(nit) [#command_channel] [#player_channel]`\n\n' +
-						'* `command_channel`: The text channel where I will listen to commands.\n' +
-						'* `player_channel`: The text channel where I will display my music player.\n\n' +
-						'Note: You can reuse the same channel multiple times.');
-			}
-			return;
-		}
+		if (!server_info.server_id) {
+			if (command != 'i' && command != 'init') return setup;
+		
+			return message.reply(await sqlitehandler.addServer(message.guild.id));
+		};
 
-		if (message.channel.id != server_info.command_channel) return;
+		if (server_info.command_channel && message.channel.id != server_info.command_channel) return;
+
+		if (!server_info.command_channel) server_info.command_channel = message.channel.id;
 
 		switch (command) {
 			case 'i':
 			case 'init':
-				if (message.mentions.channels.size < 2) {
-					message.reply('You did not provide enough text channels for all necessary parameters!');
-					break;
+				message.reply(await sqlitehandler.addServer(message.guild.id));
+				break;
+			case 's':
+			case 'set':
+			case 'settings':
+				switch (args[0]) {
+					case 'c':
+					case 'command':
+						if (!message.mentions.channels.at(0)) message.reply("You did not provide a channel to restrict commands.");
+						else message.reply(await sqlitehandler.modifyServer(message.guild.id, 'command_channel', message.mentions.channels.at(0).id));
+						break;
+					case 'p':
+					case 'player':
+						if (!message.mentions.channels.at(0)) message.reply("You did not provide a text channel to create the embed.");
+						else message.reply(await sqlitehandler.modifyServer(message.guild.id, 'player_channel', message.mentions.channels.at(0).id));
+						break;
+					case 'd':
+					case 'default':
+						if (!args[1]) {
+							message.reply("You did not provide any parameters for toggling default music sesttings.");
+							break;
+						}
+						switch(args[1]) {
+							case 0:
+							case '0':
+							case 'false':
+							case 'disable':
+								message.reply(await sqlitehandler.modifyServer(message.guild.id, 'enable_default', false));
+								break;
+							case 1:
+							case '1':
+							case 'true':
+							case 'enable':
+								message.reply(await sqlitehandler.modifyServer(message.guild.id, 'enable_default', true));
+								break;
+							default:
+								message.reply("You did not provide a valid parameter for toggling default music settings.");
+						}
+						break;
+					default:
+						if (args.length <= 0) message.reply("You did not provide any arguments for changing bot settings.");
+						else message.reply("You did not provide a valid argument for changing bot settings.");
 				}
-				sqlitehandler.addServer(message.guild.id, message.mentions.channels.at(0).id, message.mentions.channels.at(1).id);
-				message.reply("Successfully updated channels!");
 				break;
 			case 'p':
 			case 'profile':
@@ -98,24 +116,23 @@ client.on('messageCreate', async message => {
 					message.reply("You did not provide enough arguments: `-a|add [type] [track_name] [track_url]`");
 					break;
 				}
-				let pType = false;
 				switch(args[0]) {
 					case 'h':
 					case 'hanchan':
 					case '0':
 					case 0:
-						pType = 0;
+						message.reply(await sqlitehandler.addTrack(message.author.id, message.guild.id, args[1], args[2], 0));
+						break;
 					case 'r':
 					case 'riichi':
 					case '1':
 					case 1:
-						pType = 1;
+						message.reply(await sqlitehandler.addTrack(message.author.id, message.guild.id, args[1], args[2], 1));
+						break;
+					default:
+						message.reply("Invalid track type provided. Valid types are `h`/`hanchan`/`0` or `r`/`riichi`/`1`.");
+						break;
 				}
-				if (!pType) {
-					message.reply("Invalid track type provided. Valid types are `h`/`hanchan`/`0` or `r`/`riichi`/`1`.");
-					break;
-				}
-				message.reply(await sqlitehandler.addTrack(message.author.id, message.guild.id, args[1], args[2], args[0]));
 				break;
 			case 'd':
 			case 'delete':
@@ -123,31 +140,36 @@ client.on('messageCreate', async message => {
 					message.reply("You did not provide enough arguments: `-d|delete [track_name]");
 					break;
 				}
-				console.log(`Deleting track named ${args[0]}.`);
 				message.reply(await sqlitehandler.removeTrack(message.author.id, message.guild.id, args[0]));
 				break;
 			default:
-				console.log("Invalid command. Type -help to get a list of commands that IchiBot can use.");
+				message.reply("Invalid command. Type -help to get a list of commands that IchiBot can use.");
 		}
 	}
-	else if (message.mentions.has(client.user) && !message.mentions.everyone && message.channelId === server_info.command_channel) {
-		if (!server_info.player_channel) {
-			message.reply('I have not been properly set up in this server. Use `-i` or `-init` with text channels so I know where to put and expect things!\n\n' + 
-				'Command: `-i(nit) [#command_channel] [#player_channel]`\n\n' +
-				'* `command_channel`: The text channel where I will listen to commands.\n' +
-				'* `player_channel`: The text channel where I will display my music player.\n\n' +
-				'Note: You can reuse the same channel multiple times.');
-			console.log("Bot has not been initialized.");
+	else if (message.mentions.has(client.user) && !message.mentions.everyone) {
+		if (!server_info.server_id) {
+			message.reply(setup);
 			return;
 		}
+		if (!server_info.player_channel) server_info.player_channel = message.channel.id;
+
 		const channel = message.member?.voice.channel;
 		if (channel) {
 			try {
-				console.log(`${message.guild.id}, ${channel}, ${server_info.player_channel}`);
 				const result = await voicehandler.createVoice(client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));
-				if (!result) message.reply('I am already participating in a voice channel in this server.');
+				switch(result) {
+					case 'occupied':
+						message.reply('I am already participating in a voice channel in this server.');
+						break;
+					case 'missing':
+						message.reply(`The listed channel for the embed to be placed in is missing or inaccessible. Please modify/reset the bot server settings or adjust my permissions.`);
+						break;
+					default:
+						console.log(`Set up successfully in server ${message.guild.id} in voice channel ${channel}. Embed placed in [${server_info.player_channel}].`);
+				}
 			}
 			catch (error) {
+				message.reply("There was an error responding to your ping.");
 				console.error(error);
 			}
 		}
