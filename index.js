@@ -232,7 +232,7 @@ client.on('messageCreate', async message => {
 		if (!server_info.player_channel) server_info.player_channel = message.channel.id;
 
 		// Prompts IchiBot to join voice channel of user and handles failures accordingly
-		const channel = message.member?.voice.channel;
+		const channel = message.member.voice ? message.member.voice.channel : null;
 		if (channel) {
 			try {
 				const result = await voicehandler.createVoice(client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));

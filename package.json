@@ -1,7 +1,7 @@
 {
-  "name": "chuckv2",
+  "name": "ichibot",
   "version": "1.0.0",
-  "description": "The second iteration of the Riichi music player Discord bot Chuck.",
+  "description": "The third generation of the Riichi music player.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
