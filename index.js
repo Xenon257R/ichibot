@@ -28,6 +28,10 @@ const setup = 'I have not been properly set up in this server. Use `-i`|`-init` 
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
 client.once(Events.ClientReady, c => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
+	client.user.setActivity({
+		type: ActivityType.Listening,
+		name: '-help ~nya!'
+	});
 });
 
 // Log in to Discord with your client's token
