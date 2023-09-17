@@ -22,7 +22,7 @@ const client = new Client({
 // String literal for when IchiBot is not set yet
 const setup = 'I have not been properly set up in this server. Use `-i`|`-init` so I can set up!\n' +
 	'NOTE: It is recommended to configure IchiBot using `-s`|`-set`|`-settings` for additional options. You can re-run `i`|`init` to reset these server settings.\n\n' +
-	'For a list of all commands and how to use them, type `-h`|`-help`.';
+	'For a list of all IchiBot commands and how to use them, type `-h`|`-help`.';
 
 // When the client is ready, run this code (only once)
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
@@ -79,7 +79,7 @@ client.on('messageCreate', async message => {
 						// Change the #text_channel constraint for IchiBot Commands
 						if (!message.mentions.channels.at(0)) message.reply("You did not provide a channel to restrict commands.");
 						else message.reply(await sqlitehandler.modifyServer(message.guild.id, 'command_channel', message.mentions.channels.at(0).id));
-						return;
+						break;
 					case 'p':
 					case 'player':
 						// Change the #player_channel constraint for IchiBot's embedded player
@@ -101,9 +101,27 @@ client.on('messageCreate', async message => {
 								message.reply(await sqlitehandler.modifyServer(message.guild.id, 'enable_default', true));
 								break;
 							default:
-								message.reply("You did not provide true or flase for sdefault music settings.");
+								message.reply("You did not provide `true` or `false` for default music settings.");
 						}
-						return;
+						break;
+					case 'm':
+					case 'mahjong':
+						// Change the option to use mahjong terms or not
+						if (!args[1]) {
+							message.reply("You did not provide a parameter to toggle mahjong term settings.");
+							break;
+						}
+						switch (args[1]) {
+							case 'false':
+								message.reply(await sqlitehandler.modifyServer(message.guild.id, 'mahjong', false));
+								break;
+							case 'true':
+								message.reply(await sqlitehandler.modifyServer(message.guild.id, 'mahjong', true));
+								break;
+							default:
+								message.reply("You did not provide `true` or `false` for mahjong term settings.");
+						}
+						break;
 					default:
 						// An incorrect command was provided, or lack thereof
 						if (args.length <= 0) message.reply("You did not provide any arguments for changing bot settings.");
@@ -143,18 +161,22 @@ client.on('messageCreate', async message => {
 				switch(args[0]) {
 					case 'h':
 					case 'hanchan':
+					case 'a':
+					case 'ambient':
 					case '0':
 					case 0:
 						message.reply(await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 0));
 						break;
 					case 'r':
 					case 'riichi':
+					case 'b':
+					case 'battle':
 					case '1':
 					case 1:
 						message.reply(await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 1));
 						break;
 					default:
-						message.reply("Invalid track type provided. Valid types are `h`/`hanchan`/`0` or `r`/`riichi`/`1`.");
+						message.reply("Invalid track type provided. Valid types are `h`/`hanchan`/`a`/`ambient`/`0` or `r`/`riichi`/`b`/`battle`/`1`.");
 						break;
 				}
 				break;
@@ -176,6 +198,11 @@ client.on('messageCreate', async message => {
 			case 'list':
 				// Lists user's album on the server
 				const allUploads = await sqlitehandler.listUploads(message.guild.id, message.author.id);
+				const disType = await sqlitehandler.isMahjong(message.guild.id);
+				const term = {
+					h: disType ? 'Hanchan' : 'Ambient',
+					r: disType ? 'Riichi ' : 'Battle '
+				}
 				message.reply('Here is a list of all the tracks you put in this server!');
 				let chunk = '```asciidoc\n';
 				if (allUploads.length <= 0) chunk = chunk + '[Empty]';
@@ -184,7 +211,7 @@ client.on('messageCreate', async message => {
 						client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 						chunk = '```asciidoc\n';
 					}
-					chunk = chunk + (allUploads[i].type === 0 ? 'hnc' : 'rch') + ' :: ' + allUploads[i].track_name + '\n';
+					chunk = chunk + (allUploads[i].type === 0 ? term.h : term.r) + ' :: ' + allUploads[i].track_name + '\n';
 				}
 				client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 				break;
