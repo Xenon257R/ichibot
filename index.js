@@ -7,6 +7,7 @@ const helpdoc = require('./lib/helpdoc.js');
 
 const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { prefix, clientId, token } = require('./config.json');
+const musicplayer = require('./lib/musicplayer.js');
 
 // Create a new client instance
 const client = new Client({
@@ -36,6 +37,25 @@ client.once(Events.ClientReady, c => {
 
 // Log in to Discord with your client's token
 client.login(token);
+
+// IchiBot monitors all voice channel connections, and determines if it needs to disconnect because it is in an empty channel
+let autoDisconnect = null;
+client.on('voiceStateUpdate', async (oldstate, newstate) => {
+	console.log('Voice channel update identified: ' + `${oldstate.channel?.id} -> ${newstate.channel?.id}`);
+	if (oldstate.channel && oldstate.channel.members.size <= 1 && oldstate.channel.members.get(clientId)) {
+		console.log('IchiBot is now alone. IchiBot will disconnect itself in 60 seconds.');
+		autoDisconnect = setTimeout(() => {
+			voicehandler.disconnectVoice(newstate.guild.id);
+		}, 60000);
+	}
+	if (newstate.channel && newstate.channel.members.size > 1 && newstate.channel.members.get(clientId)) {
+		console.log('Someone dropped by!');
+		if (autoDisconnect) {
+			clearTimeout(autoDisconnect);
+			autoDisconnect = null;
+		}
+	}
+});
 
 // IchiBot listens to every message creation on server, and sees whether it shoulds respond to the message
 client.on('messageCreate', async message => {
@@ -238,11 +258,15 @@ client.on('messageCreate', async message => {
 		// Sets #player_channel to message's #channel if no #player_channel is set on server
 		if (!server_info.player_channel) server_info.player_channel = message.channel.id;
 
+		// Ignores mentions if command_channel is set
+		if (!server_info.command_channel) server_info.command_channel = message.channel.id;
+		if (server_info.command_channel != message.channel.id) return;
+
 		// Prompts IchiBot to join voice channel of user and handles failures accordingly
 		const channel = message.member.voice ? message.member.voice.channel : null;
 		if (channel) {
 			try {
-				const result = await voicehandler.createVoice(client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));
+				const result = await voicehandler.createVoice(client.voice.adapters, client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));
 				switch(result) {
 					case 'occupied':
 						message.reply('I am already participating in a voice channel in this server.');
