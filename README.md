@@ -16,7 +16,7 @@ V3 now comes with **Jukebox Mode**!
 
 ![Embed Jukebox](assets/_meta/jukeboxV3.png)
 
-- Comes with all OSTs found in *MahjongSoul* as baseline tracks in case users do not want to curate their own playlists. This option can be disabled on a per-server basis.
+- The original instance of IchiBot has a database with links to OSTs found in *MahjongSoul* as baseline tracks in case users did not want to curate their own playlists. This option can be disabled on a per-server basis.
 
 ## Notice
 
