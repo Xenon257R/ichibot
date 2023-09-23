@@ -56,10 +56,12 @@ client.on('messageCreate', async message => {
 			args[i] = args[i].replace(/^"(.+)"$/,'$1');
 		}
 
+		// Invokes a help command regardless of inquiry location
+		if (command === 'h' || command === 'help') return message.reply(helpdoc.specificHelp(args[0]));
+
 		// Notifies user that server has not been initialized yet
 		if (!server_info.server_id) {
 			if (command != 'i' && command != 'init') return setup;
-			if (command === 'h' || command === 'help') return message.reply(helpdoc.specificHelp(args[0]));
 		
 			return message.reply(await sqlitehandler.addServer(message.guild.id));
 		};
@@ -192,7 +194,7 @@ client.on('messageCreate', async message => {
 					message.reply("You did not provide enough arguments: `-d|delete [track_name]");
 					break;
 				}
-				message.reply(await sqlitehandler.removeTrack(message.guild.id, message.author.id, args[0]));
+				message.reply(await sqlitehandler.removeTrack(message.guild.id, message.author.id, args[0], message.guild.ownerId));
 				break;
 			case 'f':
 			case 'force':
