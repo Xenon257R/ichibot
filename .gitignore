@@ -3,11 +3,7 @@ node_modules
 config.json
 .eslintrc.json
 
-music/hanchan/*
-!music/hanchan/0/
-
-music/riichi/*
-!music/riichi/0/
+music/
 
 *.db
 *.db-journal
