@@ -21,5 +21,7 @@
         "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/14_115.png",
         "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/15_5.png",
         "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/17_30.png"
-    ]
+    ],
+    "happyImage": [0, 1, 15],
+    "sadImage": [2, 3, 4, 5, 8, 11, 13, 17]
 }

@@ -21,9 +21,9 @@ const client = new Client({
 });
 
 // String literal for when IchiBot is not set yet
-const setup = 'I have not been properly set up in this server. Use `-i`|`-init` so I can set up!\n' +
-	'NOTE: It is recommended to configure IchiBot using `-s`|`-set`|`-settings` for additional options. You can re-run `i`|`init` to reset these server settings.\n\n' +
-	'For a list of all IchiBot commands and how to use them, type `-h`|`-help`.';
+const setup = "I have not been properly set up in this server. Use `-i`|`-init` so I can set up!\n" +
+	"NOTE: It is recommended to configure IchiBot using `-s`|`-set`|`-settings` for additional options. You can re-run `i`|`init` to reset these server settings.\n\n" +
+	"For a list of all IchiBot commands and how to use them, type `-h`|`-help`.";
 
 // When the client is ready, run this code (only once)
 // We use 'c' for the event parameter to keep it separate from the already defined 'client'
@@ -31,7 +31,7 @@ client.once(Events.ClientReady, c => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
 	client.user.setActivity({
 		type: ActivityType.Listening,
-		name: '-help ~nya!'
+		name: "-help ~nya!"
 	});
 });
 
@@ -43,13 +43,13 @@ let autoDisconnect = null;
 client.on('voiceStateUpdate', async (oldstate, newstate) => {
 	console.log('Voice channel update identified: ' + `${oldstate.channel?.id} -> ${newstate.channel?.id}`);
 	if (oldstate.channel && oldstate.channel.members.size <= 1 && oldstate.channel.members.get(clientId)) {
-		console.log('IchiBot is now alone. IchiBot will disconnect itself in 60 seconds.');
+		console.log("IchiBot is now alone. IchiBot will disconnect itself in 60 seconds.");
 		autoDisconnect = setTimeout(() => {
-			voicehandler.disconnectVoice(newstate.guild.id);
+			voicehandler.disconnectVoice(newstate.guild.id, true);
 		}, 60000);
 	}
 	if (newstate.channel && newstate.channel.members.size > 1 && newstate.channel.members.get(clientId)) {
-		console.log('Someone dropped by!');
+		console.log("Someone dropped by!");
 		if (autoDisconnect) {
 			clearTimeout(autoDisconnect);
 			autoDisconnect = null;
@@ -155,12 +155,6 @@ client.on('messageCreate', async message => {
 						else message.reply("You did not provide a valid argument for changing bot settings.");
 				}
 				return;
-			case 'h':
-			case 'help':
-				// Requests help from IchiBot on how to use it
-
-				message.reply(helpdoc.specificHelp(args[0]));
-				return;
 		}
 
 		// Sets #command_channel to message's #channel if no #command_channel is set on server
@@ -246,9 +240,9 @@ client.on('messageCreate', async message => {
 					h: disType ? 'Hanchan' : 'Ambient',
 					r: disType ? 'Riichi ' : 'Battle '
 				}
-				message.reply('Here is a list of all the tracks you put in this server!');
+				message.reply("Here is a list of all the tracks you put in this server!");
 				let chunk = '```\n';
-				if (allUploads.length <= 0) chunk = chunk + '[Empty]';
+				if (allUploads.length <= 0) chunk = chunk + "[Empty]";
 				for(let i = 0; i < allUploads.length; i++) {
 					if (chunk.length > 1750) {
 						client.channels.cache.get(server_info.command_channel).send(chunk + '```');
@@ -260,7 +254,7 @@ client.on('messageCreate', async message => {
 				break;
 			case 'x':
 			case 'export':
-				message.reply(`You can export tracks you put in this server into another one I'm in by using the ID: \`${message.guild.id}\`.`);
+				message.reply(`You can export tracks you put in this server into another one I'm in by using the ID: \`${message.guild.id}\``);
 				break;
 			case 'm':
 			case 'import':
@@ -328,7 +322,7 @@ client.on('messageCreate', async message => {
 							});
 							break;
 						default:
-							console.log('Bad entry - should not have arrived here');
+							console.log("Bad entry - should not have arrived here");
 					}
 				} catch (err) {
 					await confirmationRequest.edit({
@@ -364,10 +358,10 @@ client.on('messageCreate', async message => {
 				const result = await voicehandler.createVoice(client.voice.adapters, client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));
 				switch(result) {
 					case 'occupied':
-						message.reply('I am already participating in a voice channel in this server.');
+						message.reply("I am already participating in a voice channel in this server.");
 						break;
 					case 'missing':
-						message.reply(`The listed channel for the embed to be placed in is missing or inaccessible. Please modify/reset the bot server settings or adjust my permissions.`);
+						message.reply("The listed channel for the embed to be placed in is missing or inaccessible. Please modify/reset the bot server settings or adjust my permissions.");
 						break;
 					default:
 						console.log(`Set up successfully in server ${message.guild.id} in voice channel ${channel}. Embed placed in [${server_info.player_channel}].`);
@@ -379,7 +373,7 @@ client.on('messageCreate', async message => {
 			}
 		}
 		else {
-			await message.reply('Join a voice channel so I know where to go!');
+			await message.reply("Join a voice channel so I know where to go!");
 		}
 	}
 });
