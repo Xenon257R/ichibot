@@ -185,6 +185,20 @@ client.on('messageCreate', async message => {
 					message.reply("You did not provide enough arguments: `-a|add [type] [track_name] [track_url]`");
 					break;
 				}
+
+				const resolveType = {
+					"SUCCESS"       : ` has been verified and successfully added.`,
+					"DROPBOXSUCCESS": ` has been added. This is a *Dropbox* link so IchiBot cannot validate it. Refer to \`-q|faq\` for further details.`,
+					"LONG"          : ` is too long of a name. Please keep the track name to 30 characters or less.`,
+					"RESERVED"      : ` is a reserved name for default tracks. Please use a different name.`,
+					"NOTAUDIO"      : ` is not a valid audio resource. Make sure the URL points to raw audio and not a website/GUI.`,
+					"BADURL"        : ` was not linked a valid URL. A correct URL should open in a browser.`,
+					"BADNAME"       : ` is a bad name. The track name cannot use any of the following 8 characters: \`(\`, \`)\`, \`[\`, \`]\`, \`{\`, \`}\`, \`"\`, \`'\``,
+					"INUSE"         : ` is a track name already in use in this server. Please use a different name.`,
+					"TIMEOUT"       : ` timed out before the URL resource could be validated. Please try again later. You may have to wait anywhere between a minute to an hour.`,
+					"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
+				}
+
 				switch(args[0]) {
 					case 'h':
 					case 'hanchan':
@@ -192,7 +206,8 @@ client.on('messageCreate', async message => {
 					case 'ambient':
 					case '0':
 					case 0:
-						message.reply(await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 0));
+						const hResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 0);
+						message.reply(`\`${args[1]}\` ${resolveType[hResult]}`);
 						break;
 					case 'r':
 					case 'riichi':
@@ -200,7 +215,8 @@ client.on('messageCreate', async message => {
 					case 'battle':
 					case '1':
 					case 1:
-						message.reply(await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 1));
+						const rResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 1);
+						message.reply(`\`${args[1]}\` ${resolveType[rResult]}`);
 						break;
 					default:
 						message.reply("Invalid track type provided. Valid types are `h`/`hanchan`/`a`/`ambient`/`0` or `r`/`riichi`/`b`/`battle`/`1`.");
@@ -210,7 +226,7 @@ client.on('messageCreate', async message => {
 			case 'd':
 			case 'delete':
 				// Deletes specified track from server
-				if (args. length < 1) {
+				if (args.length < 1) {
 					message.reply("You did not provide enough arguments: `-d|delete [track_name]`");
 					break;
 				}
@@ -241,6 +257,84 @@ client.on('messageCreate', async message => {
 					chunk = chunk + (allUploads[i].type === 0 ? term.h : term.r) + ' - ' + allUploads[i].track_name + '\n';
 				}
 				client.channels.cache.get(server_info.command_channel).send(chunk + '```');
+				break;
+			case 'x':
+			case 'export':
+				message.reply(`You can export tracks you put in this server into another one I'm in by using the ID: \`${message.guild.id}\`.`);
+				break;
+			case 'm':
+			case 'import':
+				if (!args[0]) {
+					message.reply("You need to provide the server ID from which you will be importing your list from: `-i|import [server_id]`");
+				}
+				const importList = await sqlitehandler.listUploads(args[0], message.author.id);
+				if (importList.length < 0) {
+					message.reply("The provided server ID is invalid, or you do not have any tracks uploaded there.");
+				}
+				const confirmationRequest = await message.reply({
+					content: `Ready to import ${importList.length} tracks from the **${client.guilds.cache.get(args[0])?.name}** server.`,
+					components: [new ActionRowBuilder().addComponents(
+						new ButtonBuilder().setCustomId('proceed').setLabel('Proceed').setStyle(ButtonStyle.Success),
+						new ButtonBuilder().setCustomId('cancel').setLabel('Cancel').setStyle(ButtonStyle.Danger))
+					]
+				});
+
+				try {
+					const confirmation = await confirmationRequest.awaitMessageComponent({ filter: i => i.user.id === message.author.id, time: 10000 });
+
+					switch (confirmation.customId) {
+						case 'proceed':
+							await confirmation.update({
+								content: 'Importing tracks. URLs will not be validated. This should not take longer than a minute.',
+								components: []
+							});
+
+							// Inline sleep to pad 2 seconds minimum
+							await new Promise(r => setTimeout(r, 2000));
+
+							const results = await sqlitehandler.importData(message.guild.id, message.author.id, importList);
+							const disType = await sqlitehandler.isMahjong(message.guild.id);
+							const term = {
+								h: disType ? 'Hanchan' : 'Ambient',
+								r: disType ? 'Riichi ' : 'Battle '
+							}
+							resultString = '';
+							results.forEach(element => {
+								if (resultString.length >= 1750) {
+									message.channel.send('```' + resultString + '```');
+									resultString = '';
+								}
+								const resolveType = {
+									"SUCCESS"       : 'O - Success! ------',
+									"DROPBOXSUCCESS": 'O - Success! ------',
+									"LONG"          : 'X - Name too long -',
+									"RESERVED"      : 'X - Unusable name -',
+									"NOTAUDIO"      : 'X - Is not audio --',
+									"BADURL"        : 'X - Not a valid URL',
+									"BADNAME"       : 'X - Bad name ------',
+									"INUSE"         : 'X - Name in use ---',
+									"TIMEOUT"       : 'X - Check timed out',
+									"UNHANDLEDERR"  : 'X - Unhandled Error'
+								}
+								resultString = resultString + `${resolveType[element.code]} : ${element.type === 1 ? term.r : term.h} | ${element.name}\n`
+							});
+							message.channel.send('```' + resultString + '```');
+							break;
+						case 'cancel':
+							await confirmation.update({
+								content: 'Import aborted.',
+								components: []
+							});
+							break;
+						default:
+							console.log('Bad entry - should not have arrived here');
+					}
+				} catch (err) {
+					await confirmationRequest.edit({
+						content: 'Confirmation not received in time, cancelling import.',
+						components: []
+					});
+				}
 				break;
 			default:
 				// Invalid command was provided
