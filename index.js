@@ -265,7 +265,8 @@ client.on('messageCreate', async message => {
 			case 'm':
 			case 'import':
 				if (!args[0]) {
-					message.reply("You need to provide the server ID from which you will be importing your list from: `-i|import [server_id]`");
+					message.reply("You need to provide the server ID from which you will be importing your list from: `-m|import [server_id]`");
+					break;
 				}
 				const importList = await sqlitehandler.listUploads(args[0], message.author.id);
 				if (importList.length < 0) {
