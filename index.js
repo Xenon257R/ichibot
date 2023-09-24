@@ -211,7 +211,7 @@ client.on('messageCreate', async message => {
 			case 'delete':
 				// Deletes specified track from server
 				if (args. length < 1) {
-					message.reply("You did not provide enough arguments: `-d|delete [track_name]");
+					message.reply("You did not provide enough arguments: `-d|delete [track_name]`");
 					break;
 				}
 				message.reply(await sqlitehandler.removeTrack(message.guild.id, message.author.id, args[0], message.guild.ownerId));
@@ -231,14 +231,14 @@ client.on('messageCreate', async message => {
 					r: disType ? 'Riichi ' : 'Battle '
 				}
 				message.reply('Here is a list of all the tracks you put in this server!');
-				let chunk = '```asciidoc\n';
+				let chunk = '```\n';
 				if (allUploads.length <= 0) chunk = chunk + '[Empty]';
 				for(let i = 0; i < allUploads.length; i++) {
 					if (chunk.length > 1750) {
 						client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 						chunk = '```asciidoc\n';
 					}
-					chunk = chunk + (allUploads[i].type === 0 ? term.h : term.r) + ' :: ' + allUploads[i].track_name + '\n';
+					chunk = chunk + (allUploads[i].type === 0 ? term.h : term.r) + ' - ' + allUploads[i].track_name + '\n';
 				}
 				client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 				break;
