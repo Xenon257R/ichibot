@@ -78,6 +78,7 @@ client.on('messageCreate', async message => {
 
 		// Invokes a help command regardless of inquiry location
 		if (command === 'h' || command === 'help') return message.reply(helpdoc.specificHelp(args[0]));
+		if (command === 'q' || command === 'faq') return message.reply(helpdoc.specificHelp('faq'));
 
 		// Notifies user that server has not been initialized yet
 		if (!server_info.server_id) {
