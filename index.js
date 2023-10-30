@@ -5,12 +5,23 @@ const sqlitehandler = require('./lib/sqlitehandler.js');
 const voicehandler = require('./lib/musicplayer.js');
 const helpdoc = require('./lib/helpdoc.js');
 
-const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Options, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { prefix, clientId, token } = require('./config.json');
 const musicplayer = require('./lib/musicplayer.js');
 
 // Create a new client instance
 const client = new Client({
+	sweepers: {
+		...Options.DefaultSweeperSettings,
+		messages: {
+			interval: 3600,
+			lifetime: 1800
+		}
+	},
+	makeCache: Options.cacheWithLimits({
+		...Options.DefaultMakeCacheSettings,
+		ReactionManager: 0
+	}),
 	intents: [
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildMessages,
