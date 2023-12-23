@@ -93,7 +93,7 @@ client.on('messageCreate', async message => {
 
 		// Notifies user that server has not been initialized yet
 		if (!server_info.server_id) {
-			if (command != 'i' && command != 'init') return setup;
+			if (command != 'i' && command != 'init') return message.reply(setup);
 		
 			return message.reply(await sqlitehandler.addServer(message.guild.id));
 		};
