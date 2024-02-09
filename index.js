@@ -5,7 +5,7 @@ const sqlitehandler = require('./lib/sqlitehandler.js');
 const voicehandler = require('./lib/musicplayer.js');
 const helpdoc = require('./lib/helpdoc.js');
 
-const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Options, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Options, Collection, Events, GatewayIntentBits, MessageMentions: { USERS_PATTERN } } = require('discord.js');
 const { prefix, clientId, token } = require('./config.json');
 const musicplayer = require('./lib/musicplayer.js');
 
@@ -80,6 +80,7 @@ client.on('messageCreate', async message => {
 	if (message.content.startsWith(prefix)) {
 		// CITATION: https://stackoverflow.com/questions/16261635/javascript-split-string-by-space-but-ignore-space-in-quotes-notice-not-to-spli
 		const args = message.content.slice(prefix.length).trim().match(/(?:[^\s"]+|"[^"]*")+/g);
+		if (!args || args.length <= 0) return;
 		const command = args.shift().toLowerCase();
 
 		// CITATION: https://stackoverflow.com/questions/19156148/i-want-to-remove-double-quotes-from-a-string
@@ -350,7 +351,7 @@ client.on('messageCreate', async message => {
 	}
 
 	// Handles @IchiBot mention
-	else if (message.mentions.has(client.user) && !message.mentions.everyone) {
+	else if (message.mentions.has(client.user) && !message.mentions.everyone && message.content.match(USERS_PATTERN)) {
 		if (!server_info.server_id) {
 			message.reply(setup);
 			return;
