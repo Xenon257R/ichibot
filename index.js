@@ -52,7 +52,7 @@ client.login(token);
 // IchiBot monitors all voice channel connections, and determines if it needs to disconnect because it is in an empty channel
 let autoDisconnect = null;
 client.on('voiceStateUpdate', async (oldstate, newstate) => {
-	console.log('Voice channel update identified: ' + `${oldstate.channel?.id} -> ${newstate.channel?.id}`);
+	// console.log('Voice channel update identified: ' + `${oldstate.channel?.id} -> ${newstate.channel?.id}`);
 	if (oldstate.channel && oldstate.channel.members.size <= 1 && oldstate.channel.members.get(clientId)) {
 		console.log("IchiBot is now alone. IchiBot will disconnect itself in 60 seconds.");
 		autoDisconnect = setTimeout(() => {
@@ -60,7 +60,7 @@ client.on('voiceStateUpdate', async (oldstate, newstate) => {
 		}, 60000);
 	}
 	if (newstate.channel && newstate.channel.members.size > 1 && newstate.channel.members.get(clientId)) {
-		console.log("Someone dropped by!");
+		// console.log("Someone dropped by!");
 		if (autoDisconnect) {
 			clearTimeout(autoDisconnect);
 			autoDisconnect = null;
@@ -368,7 +368,7 @@ client.on('messageCreate', async message => {
 		const channel = message.member.voice ? message.member.voice.channel : null;
 		if (channel) {
 			try {
-				const result = await voicehandler.createVoice(client.voice.adapters, client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel));
+				const result = await voicehandler.createVoice(client.voice.adapters, client.guilds.cache.get(message.guild.id), channel, client.channels.cache.get(server_info.player_channel), server_info.jukebox_mode);
 				switch(result) {
 					case 'occupied':
 						message.reply("I am already participating in a voice channel in this server.");
