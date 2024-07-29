@@ -225,8 +225,19 @@ client.on('messageCreate', async message => {
 						const rResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 1);
 						message.reply(`\`${args[1]}\` ${resolveType[rResult]}`);
 						break;
+					case 'j':
+					case 'jukebox':
+					case '2':
+					case 2:
+						const jResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 2);
+						message.reply(`\`${args[1]}\` ${resolveType[jResult]}`);
+						break;
 					default:
-						message.reply("Invalid track type provided. Valid types are `h`/`hanchan`/`a`/`ambient`/`0` or `r`/`riichi`/`b`/`battle`/`1`.");
+						message.reply("Invalid track type provided. Valid types are as follows:\n" +
+							"```md\n" +
+							"* h | hanchan | a | ambient | 0|\n" +
+							"* r | riichi  | b | battle  | 1\n" +
+							"* j | jukebox |   |         | 2```");
 						break;
 				}
 				break;
