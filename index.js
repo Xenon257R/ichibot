@@ -6,7 +6,8 @@ const voicehandler = require('./lib/musicplayer.js');
 const helpdoc = require('./lib/helpdoc.js');
 
 const { ActionRowBuilder, ActivityType, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client, Options, Collection, Events, GatewayIntentBits, MessageMentions: { USERS_PATTERN } } = require('discord.js');
-const { prefix, clientId, token } = require('./config.json');
+const { prefix, clientId, devId, token } = require('./config.json');
+const { latest } = require('./updates.json');
 const musicplayer = require('./lib/musicplayer.js');
 
 // Create a new client instance
@@ -88,9 +89,24 @@ client.on('messageCreate', async message => {
 			args[i] = args[i].replace(/^"(.+)"$/,'$1');
 		}
 
-		// Invokes a help command regardless of inquiry location
-		if (command === 'h' || command === 'help') return message.reply(helpdoc.specificHelp(args[0]));
-		if (command === 'q' || command === 'faq') return message.reply(helpdoc.specificHelp('faq'));
+		// !! DEV ONLY COMMAND !!
+		// Sends an announcement embed (after confirmation) to all servers that has IchiBot initialized
+		if (command === 'announcement' && message.author.id === devId) {
+			latest.color = Number(latest.color);
+			if (args.length <= 0) {
+				message.reply({ embeds: [latest] });
+			}
+			if (args[0] != "CONFIRM") {
+				message.reply("Are you sure? Double check!");
+			}
+			const serverList = await sqlitehandler.getAllServerChannels();
+			serverList.forEach((server) => {
+				let postChannel = client.channels.cache.get(server.command_channel);
+				if (postChannel) postChannel.send({ embeds: [latest] });
+				else console.log(`Post failure in server ${server}`);
+			});
+			return;
+		}
 
 		// Notifies user that server has not been initialized yet
 		if (!server_info.server_id) {
@@ -99,11 +115,16 @@ client.on('messageCreate', async message => {
 			return message.reply(await sqlitehandler.addServer(message.guild.id));
 		};
 
-		// Ignores messages if its #text_channel does not match server setting constraints
-		if (server_info.command_channel && message.channel.id != server_info.command_channel) return;
-
 		// Runs server-wide commands as provided
 		switch (command) {
+			case 'h':
+			case 'help':
+				// Lists a help grid
+				return message.reply(helpdoc.specificHelp(args[0]));
+			case 'q':
+			case 'faq':
+				// Lists frequently asked questions
+				return message.reply(helpdoc.specificHelp('faq'));
 			case 'i':
 			case 'init':
 				// Initializes IchiBot
@@ -169,6 +190,9 @@ client.on('messageCreate', async message => {
 				}
 				return;
 		}
+
+		// Ignores messages if its #text_channel does not match server setting constraints
+		if (server_info.command_channel && message.channel.id != server_info.command_channel) return;
 
 		// Sets #command_channel to message's #channel if no #command_channel is set on server
 		if (!server_info.command_channel) server_info.command_channel = message.channel.id;

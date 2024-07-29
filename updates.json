@@ -1,0 +1,31 @@
+{
+    "latest" : {
+        "author": {
+            "name": "IchiBot",
+            "icon_url": "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/14_115.png"
+        },
+        "title": "Jukebox Update!",
+        "description": "**IchiBot** got a new major update ~nya! It has to do with the Jukebox, plus a few bugfixes and optimizations.",
+        "fields": [
+            {
+                "name": "__[a|b], [h|r] and now [j]__",
+                "value": "A third parameter has now been implemented - `j|jukebox`. Upload new tracks using this tag, and they will exclusively be saved for the Jukebox."
+            },
+            {
+                "name": "__Jukebox Playback Modes!__",
+                "value": "Replacing the quick exit, you can now toggle the Jukebox's playback behavior to play in order, repeat, shuffle, or only play once."
+            },
+            {
+                "name": "-",
+                "value": "Enjoy the update, and please report any bugs ~nya!"
+            }
+        ],
+        "thumbnail": {
+            "url": "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/ichihime-11.png"
+        },
+        "color": "0xffbb9d",
+        "footer": {
+            "text": "v3.2.0"
+        }
+    }
+}
