@@ -94,18 +94,18 @@ client.on('messageCreate', async message => {
 		if (command === 'announcement' && message.author.id === devId) {
 			latest.color = Number(latest.color);
 			if (args.length <= 0) {
-				message.reply({ embeds: [latest] });
+				return message.reply({ embeds: [latest] });
 			}
 			if (args[0] != "CONFIRM") {
-				message.reply("Are you sure? Double check!");
+				return message.reply("Are you sure? Double check!");
 			}
 			const serverList = await sqlitehandler.getAllServerChannels();
-			serverList.forEach((server) => {
-				let postChannel = client.channels.cache.get(server.command_channel);
+			for (const server of serverList) {
+				const postChannel = await client.channels.fetch(server.command_channel); 
 				if (postChannel) postChannel.send({ embeds: [latest] });
-				else console.log(`Post failure in server ${server}`);
-			});
-			return;
+				else console.log(`Post failure in server ${server.command_channel}`);
+			}
+			return true;
 		}
 
 		// Notifies user that server has not been initialized yet
