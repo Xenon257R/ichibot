@@ -259,7 +259,7 @@ client.on('messageCreate', async message => {
 					default:
 						message.reply("Invalid track type provided. Valid types are as follows:\n" +
 							"```md\n" +
-							"* h | hanchan | a | ambient | 0|\n" +
+							"* h | hanchan | a | ambient | 0\n" +
 							"* r | riichi  | b | battle  | 1\n" +
 							"* j | jukebox |   |         | 2```");
 						break;
