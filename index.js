@@ -284,10 +284,6 @@ client.on('messageCreate', async message => {
 				// Lists user's album on the server
 				const allUploads = await sqlitehandler.listUploads(message.guild.id, message.author.id);
 				const disType = await sqlitehandler.isMahjong(message.guild.id);
-				const term = {
-					h: disType ? 'Hanchan' : 'Ambient',
-					r: disType ? 'Riichi ' : 'Battle '
-				}
 				message.reply("Here is a list of all the tracks you put in this server!");
 				let chunk = '```\n';
 				if (allUploads.length <= 0) chunk = chunk + "[Empty]";
@@ -296,7 +292,18 @@ client.on('messageCreate', async message => {
 						client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 						chunk = '```asciidoc\n';
 					}
-					chunk = chunk + (allUploads[i].type === 0 ? term.h : term.r) + ' - ' + allUploads[i].track_name + '\n';
+					let trackTerm = 'Jukebox';
+					switch (allUploads) {
+						case 0:
+							trackTerm = disType ? 'Hanchan' : 'Ambient';
+							break;
+						case 1:
+							trackTerm = disType ? 'Riichi ' : 'Battle ';
+							break;
+						default:
+							// Remain 'Jukebox';
+					}
+					chunk = chunk + trackTerm + ' - ' + allUploads[i].track_name + '\n';
 				}
 				client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 				break;
