@@ -293,7 +293,7 @@ client.on('messageCreate', async message => {
 						chunk = '```asciidoc\n';
 					}
 					let trackTerm = 'Jukebox';
-					switch (allUploads) {
+					switch (allUploads[i].type) {
 						case 0:
 							trackTerm = disType ? 'Hanchan' : 'Ambient';
 							break;
