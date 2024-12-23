@@ -4,6 +4,35 @@
             "name": "IchiBot",
             "icon_url": "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/14_115.png"
         },
+        "title": "Repetitions and Tagging",
+        "description": "**IchiBot** got a new major update ~nya!  Some QoL changes, and a BIG new feature - tags!",
+        "fields": [
+            {
+                "name": "Rerolling For Action",
+                "value": "Riichi/Battle music is now initialized as a randomized playlist where it cycles through them all one by one instead of picking a new random one every consecutive click."
+            },
+            {
+                "name": "Tags For Tracks",
+                "value": "You can now apply tags to the music you curated for your Riichi/Battle music with the new `t|ag` command. Use `-help tag` for further details."
+            },
+            {
+                "name": "-",
+                "value": "Enjoy the update, and please report any bugs ~nya!"
+            }
+        ],
+        "thumbnail": {
+            "url": "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/ichihime-01.png"
+        },
+        "color": "0xffbb9d",
+        "footer": {
+            "text": "v3.3.0"
+        }
+    },
+    "v3.2.0" : {
+        "author": {
+            "name": "IchiBot",
+            "icon_url": "https://raw.githubusercontent.com/Xenon257R/ichibot/master/assets/14_115.png"
+        },
         "title": "Jukebox Update!",
         "description": "**IchiBot** got a new major update ~nya! It has to do with the Jukebox, plus a few bugfixes and optimizations.",
         "fields": [

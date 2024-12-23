@@ -307,7 +307,7 @@ client.on('messageCreate', async message => {
 			case 'l':
 			case 'list':
 				// Lists user's album on the server
-				const allUploads = await sqlitehandler.listUploads(message.guild.id, message.author.id);
+				const allUploads = await sqlitehandler.listUploads(message.guild.id, message.author.id, (args[0] && args[0] === 'verbose'));
 				const disType = await sqlitehandler.isMahjong(message.guild.id);
 				message.reply("Here is a list of all the tracks you put in this server!");
 				let chunk = '```\n';
@@ -328,7 +328,7 @@ client.on('messageCreate', async message => {
 						default:
 							// Remain 'Jukebox';
 					}
-					chunk = chunk + trackTerm + ' - ' + allUploads[i].track_name + '\n';
+					chunk = chunk + trackTerm + ' - ' + allUploads[i].track_name + allUploads[i].tagList + '\n';
 				}
 				client.channels.cache.get(server_info.command_channel).send(chunk + '```');
 				break;
@@ -428,7 +428,7 @@ client.on('messageCreate', async message => {
 							"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
 						}
 
-						const cResult = await sqlitehandler.createTag(message.guild.id, message.author.id, args[1]);
+						const cResult = await sqlitehandler.createTag(message.guild.id, message.author.id, args[1], args[2] ? args[2] : 1);
 						message.reply(`\`${args[1]}\` ${createType[cResult]}`);
 						break;
 					case 'r':
@@ -506,6 +506,45 @@ client.on('messageCreate', async message => {
 						}
 						message.reply(`\`${args[1]}\` untagging results:${dResultString}`);
 						break;
+					case 'm':
+					case 'mode':
+						if (args.length < 2) {
+							message.reply(`You did not specify a tag whose mode you would like to modify.`);
+							break;
+						}
+						let newMode = -1;
+						if (args[2]) {
+							switch(args[2]) {
+								case 'h':
+								case 'hanchan':
+								case 'a':
+								case 'ambient':
+								case '0':
+								case 0:
+									newMode = 0;
+									break;
+								case 'r':
+								case 'riichi':
+								case 'b':
+								case 'battle':
+								case '1':
+								case 1:
+									newMode = 1;
+									break;
+								default:
+									message.reply(`${args[2]} is not a valid playback mode. Use \`h|hanchan|a|ambient|0\`, \`r|riichi|b|battle|1\` or leave the argument blank to toggle the behavior instead.`);
+									return;
+							}
+						}
+						const mResult = await sqlitehandler.changeTagMode(message.guild.id, message.author.id, args[1], newMode);
+						if (mResult < 0) {
+							message.reply(`Modifying the playback behavior of tag ${args[1]} was unsuccessful. You may not be the creator of the tag, or the tag may not exist.`);
+							break;
+						}
+						else {
+							message.reply(`The tag \`${args[1]}\` was successfuly modified to ${mResult === 0 ? "play through all tagged tracks after one randomization" : "select one random track to repeat"}.`)
+							break;
+						}
 					default:
 						message.reply("Invalid `tag` argument. Type -help tag for assistance in using this command.");
 				}
