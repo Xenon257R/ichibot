@@ -230,6 +230,8 @@ client.on('messageCreate', async message => {
 					"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
 				}
 
+				let addSuccess = "";
+
 				switch(args[0]) {
 					case 'h':
 					case 'hanchan':
@@ -239,6 +241,7 @@ client.on('messageCreate', async message => {
 					case 0:
 						const hResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 0);
 						message.reply(`\`${args[1]}\` ${resolveType[hResult]}`);
+						addSuccess = hResult;
 						break;
 					case 'r':
 					case 'riichi':
@@ -248,6 +251,7 @@ client.on('messageCreate', async message => {
 					case 1:
 						const rResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 1);
 						message.reply(`\`${args[1]}\` ${resolveType[rResult]}`);
+						addSuccess = rResult;
 						break;
 					case 'j':
 					case 'jukebox':
@@ -255,6 +259,7 @@ client.on('messageCreate', async message => {
 					case 2:
 						const jResult = await sqlitehandler.addTrack(message.guild.id, message.author.id, args[1], args[2], 2);
 						message.reply(`\`${args[1]}\` ${resolveType[jResult]}`);
+						addSuccess = jResult;
 						break;
 					default:
 						message.reply("Invalid track type provided. Valid types are as follows:\n" +
@@ -263,6 +268,26 @@ client.on('messageCreate', async message => {
 							"* r | riichi  | b | battle  | 1\n" +
 							"* j | jukebox |   |         | 2```");
 						break;
+				}
+
+				// If tags are provided, add them as well
+				if (args.length > 3 && (addSuccess === "SUCCESS" || addSuccess === "DROPBOXSUCCESS")) {
+					const attachType = {
+						"SUCCESS"       : ` was attached.`,
+						"FAILURE"       : ` was not attached. This tag may not exist/has been created by you.`,
+						"REPEAT"        : ` is already attached.`,
+						"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
+					}
+					const attachList = [];
+					for (i = 3; i < args.length; i++) {
+						attachList.push(args[i]);
+					}
+					const aResult = await sqlitehandler.attachTags(message.guild.id, message.author.id, args[1], attachList);
+					var aResultString = "";
+					for (i = 0; i < attachList.length; i++) {
+						aResultString = aResultString + "\n" + `\`${attachList[i]}\`${attachType[aResult[attachList[i]]]}`;
+					}
+					message.reply(`\`${args[1]}\` init-tag results:${aResultString}`);
 				}
 				break;
 			case 'd':
@@ -348,7 +373,7 @@ client.on('messageCreate', async message => {
 								h: disType ? 'Hanchan' : 'Ambient',
 								r: disType ? 'Riichi ' : 'Battle '
 							}
-							resultString = '';
+							var resultString = '';
 							results.forEach(element => {
 								if (resultString.length >= 1750) {
 									message.channel.send('```' + resultString + '```');
@@ -384,6 +409,105 @@ client.on('messageCreate', async message => {
 						content: 'Confirmation not received in time, cancelling import.',
 						components: []
 					});
+				}
+				break;
+			case 't':
+			case 'tag':
+				if (!args[0]) {
+					message.reply("You did not provide any further arguments.");
+					break;
+				}
+				switch (args[0]) {
+					case 'c':
+					case 'create':
+						const createType = {
+							"SUCCESS"       : ` has been created for use.`,
+							"INUSE"         : ` already exists.`,
+							"MAXED"         : ` will exceed the maximum allotment of 5 tags. Please delete an existing tag before adding a new tag.`,
+							"INVALID"       : ` is an invalid name. Make sure your tag name consists of only letters and numbers and is 8 characters or less. Spaces are not allowed.`,
+							"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
+						}
+
+						const cResult = await sqlitehandler.createTag(message.guild.id, message.author.id, args[1]);
+						message.reply(`\`${args[1]}\` ${createType[cResult]}`);
+						break;
+					case 'r':
+					case 'remove':
+						const removeType = {
+							"SUCCESS"       : ` has been deleted and removed from affiliated tracks.`,
+							"NOTFOUND"      : ` was not found in your tag collection.`,
+							"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
+						}
+
+						const rResult = await sqlitehandler.deleteTag(message.guild.id, message.author.id, args[1]);
+						message.reply(`\`${args[1]}\` ${removeType[rResult]}`);
+						break;
+					case 'a':
+					case 'attach':
+						const attachType = {
+							"SUCCESS"       : ` was attached.`,
+							"FAILURE"       : ` was not attached. This tag may not exist/has been created by you.`,
+							"REPEAT"        : ` is already attached.`,
+							"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
+						}
+						if (!args[1]) {
+							message.reply(`You did not specify a track to attach tags to.`);
+							break;
+						}
+						const attachTrackExists = await sqlitehandler.checkExists(message.guild.id, message.author.id, args[1]);
+						if (!attachTrackExists) {
+							message.reply(`The specified track \`${args[1]}\` does not exist on this server, or is not uploaded by you.`);
+							break;
+						}
+						const attachList = [];
+						for (i = 2; i < args.length; i++) {
+							attachList.push(args[i]);
+						}
+						if (attachList.length <= 0) {
+							message.reply(`You did not specify any tags to attach to ${args[1]}.`);
+							break;
+						}
+						const aResult = await sqlitehandler.attachTags(message.guild.id, message.author.id, args[1], attachList);
+						var aResultString = "";
+						for (i = 0; i < attachList.length; i++) {
+							aResultString = aResultString + "\n" + `\`${attachList[i]}\`${attachType[aResult[attachList[i]]]}`;
+						}
+						message.reply(`\`${args[1]}\` tagging results:${aResultString}`);
+						break;
+					case 'd':
+					case 'detach':
+						const detachType = {
+							"SUCCESS"       : ` was detached.`,
+							"NOTEXIST"      : ` was not detached. This tag may not exist/has been created by you.`,
+							"NOTTAGGED"     : ` was not detached. This track does not have the specified tag.`,
+							"UNHANDLEDERR"  : ` encountered an unhandled error. Please report this bug.`
+						}
+						if (!args[1]) {
+							message.reply(`You did not specify a track to detach tags from.`);
+							break;
+						}
+						const detachTrackExists = await sqlitehandler.checkExists(message.guild.id, message.author.id, args[1]);
+						if (!detachTrackExists) {
+							message.reply(`The specified track \`${args[1]}\` does not exist on this server, or is not uploaded by you.`);
+							break;
+						}
+						const detachList = [];
+						for (i = 2; i < args.length; i++) {
+							detachList.push(args[i]);
+						}
+						if (detachList.length <= 0) {
+							message.reply(`You did not specify any tags to detach from ${args[1]}.`);
+							break;
+						}
+						const dResult = await sqlitehandler.detachTags(message.guild.id, message.author.id, args[1], detachList);
+						var dResultString = "";
+						for (i = 0; i < detachList.length; i++) {
+							dResultString = dResultString + "\n" + `\`${detachList[i]}\`${detachType[dResult[detachList[i]]]}`;
+						}
+						message.reply(`\`${args[1]}\` untagging results:${dResultString}`);
+						break;
+					default:
+						message.reply("Invalid `tag` argument. Type -help tag for assistance in using this command.");
 				}
 				break;
 			default:
